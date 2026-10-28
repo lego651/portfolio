@@ -5,8 +5,8 @@
 window.SITE = {
   name: "Jason",
   tagline: "AI product builder · open to new roles",
-  // TODO: replace with your real bio
-  bio: "Placeholder bio: I build AI products end to end, and I run a team of AI agents that ships code every day.",
+  // TODO: mock bio — replace with your real one
+  bio: "I build AI products from idea to production. My current product, drop-note, is in beta, and a team of seven AI agents I designed plans, codes and tests it every day while I set direction and review every merge. I'm looking for a team where AI is part of how the product gets built, not only what it ships.",
   kpis: [["4", "AI projects"], ["213", "commits on drop-note"], ["85", "PRs merged"], ["7", "AI agents on my team"]],
 };
 
