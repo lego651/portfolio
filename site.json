@@ -1,0 +1,13 @@
+{
+  "name": "Jason",
+  "tagline": "AI product builder · open to new roles",
+  "bio": "I build AI products from idea to production. My current product, drop-note, is in beta, and a team of seven AI agents I designed plans, codes and tests it every day while I set direction and review every merge. I'm looking for a team where AI is part of how the product gets built, not only what it ships.",
+  "featured": "drop-note",
+  "projects": ["drop-note", "agent-team", "blackout-clock", "family-fridge"],
+  "kpis": [
+    { "value": "count:projects", "label": "AI projects" },
+    { "value": "drop-note:commits", "label": "commits on drop-note" },
+    { "value": "drop-note:prs", "label": "PRs merged" },
+    { "value": "agent-team:agents", "label": "AI agents on my team" }
+  ]
+}

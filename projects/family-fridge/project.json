@@ -1,0 +1,33 @@
+{
+  "id": "family-fridge",
+  "name": "Family Fridge",
+  "status": "concept",
+  "statusLabel": "Concept",
+  "asOf": "2026-10-29",
+  "short": "An iOS app where a family logs meals by photo or voice. AI estimates the calories and everyone sees it.",
+  "role": "Product shaping and visual design",
+  "stack": "iOS, TestFlight (planned)",
+  "link": null,
+  "images": [
+    { "file": "images/onboarding.jpg", "alt": "Family Fridge onboarding screens: sign in, about you, your family, new kid (sample data)" }
+  ],
+  "stats": [
+    { "key": "taps", "value": "1", "label": "tap to log" },
+    { "key": "inputs", "value": "2", "label": "ways in: photo or voice" },
+    { "key": "kid-targets", "value": "0", "label": "calorie targets for kids" }
+  ],
+  "highlights": [
+    "A Family Board home with one tile per person",
+    "Log a meal by photo or voice; AI estimates calories",
+    "Any adult can log for a kid; kids need no account",
+    "Kid profiles track meals, not calories, following pediatric guidance"
+  ],
+  "next": [
+    "Build the photo-logging flow for TestFlight"
+  ],
+  "timeline": [
+    { "date": "2026-10-17", "type": "decision", "title": "Visual direction: Gallery Wall", "body": "Picked from six directions after asking for something more polished." },
+    { "date": "2026-10-17", "type": "decision", "title": "Product shape agreed", "body": "A Family Board home, one-tap photo/voice capture, and an activity feed." },
+    { "date": "2026-10-17", "type": "start", "title": "Requirements", "body": "Family accounts and kid profiles without logins or calorie targets." }
+  ]
+}

@@ -91,3 +91,7 @@ p { margin: 0; }
   .arrow { display: none; }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+.p-off { background: #e9ecea; color: #56615c; }
+.checks.next li::before { width: 7px; height: 7px; border: 0; border-radius: 50%; background: var(--accent); transform: none; top: 8px; left: 4px; }
+.foot { font-family: var(--mono); font-size: 11px; color: var(--muted); }

@@ -1,0 +1,41 @@
+{
+  "_readme": "Which GitHub account owns each project, and where its source lives on that account's Mac. Used by the update-portfolio skill. A machine only updates projects whose account matches `gh api user --jq .login`.",
+  "projects": [
+    {
+      "id": "drop-note",
+      "account": "lego651",
+      "repo": "lego651/drop-note",
+      "localPath": "~/TEMP/drop-note",
+      "read": ["CLAUDE.md", "docs/architecture/overview.md", "git log", "merged PRs (gh)"],
+      "liveUrl": "https://dropnote.me",
+      "screenshots": ["https://dropnote.me"]
+    },
+    {
+      "id": "agent-team",
+      "account": "lego651",
+      "repo": null,
+      "localPath": "~/TEMP/drop-note",
+      "read": ["git log of drop-note (agent-made PRs)", "Paperclip dashboard http://localhost:3100/DRO/dashboard (drop-note company ONLY)", "~/.claude/paper-clip/CONTEXT.md"],
+      "liveUrl": null,
+      "screenshots": ["http://localhost:3100/DRO/dashboard"]
+    },
+    {
+      "id": "blackout-clock",
+      "account": "pomo651",
+      "repo": null,
+      "localPath": "~/TEMP/blackout-clock",
+      "read": ["README.md", "CLAUDE.md", "docs/PRD.md", "docs/design/", "git log"],
+      "liveUrl": null,
+      "screenshots": ["design/departure-board.html"]
+    },
+    {
+      "id": "family-fridge",
+      "account": "pomo651",
+      "repo": null,
+      "localPath": "~/TEMP/family-fridge",
+      "read": ["README.md", "CLAUDE.md", "docs/", "git log"],
+      "liveUrl": null,
+      "screenshots": ["design/mockups.html"]
+    }
+  ]
+}

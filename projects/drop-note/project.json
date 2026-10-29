@@ -1,0 +1,40 @@
+{
+  "id": "drop-note",
+  "name": "drop-note",
+  "status": "live",
+  "statusLabel": "Live · beta",
+  "asOf": "2026-10-29",
+  "short": "Email anything to one address. AI summarizes and tags it, and you browse it all in a clean dashboard.",
+  "role": "Solo builder: product, design, engineering",
+  "stack": "Next.js 15, Supabase, OpenAI, SendGrid, Vercel",
+  "link": "https://dropnote.me",
+  "images": [
+    { "file": "images/landing.jpg", "alt": "drop-note landing page: Save anything from anywhere" },
+    { "file": "images/app.jpg", "alt": "drop-note items dashboard with AI summaries and tags" }
+  ],
+  "stats": [
+    { "key": "commits", "value": "213", "label": "commits" },
+    { "key": "prs", "value": "78", "label": "PRs merged" },
+    { "key": "months", "value": "7", "label": "months" }
+  ],
+  "highlights": [
+    "One address, drop@dropnote.me, saves articles, links, PDFs and notes",
+    "AI writes a summary and tags for every item in seconds",
+    "Envelopes turn saved items into a plan you can tick off",
+    "Own design system, Airmail, in light and dark"
+  ],
+  "next": [
+    "Friend beta: collect feedback on Envelopes and the Mood Sheet",
+    "Production hardening: uptime monitoring and alerting",
+    "Morning Post: an optional daily digest of saved items"
+  ],
+  "timeline": [
+    { "date": "2026-10-24", "type": "ship", "title": "Envelopes: Mood Sheet and daily idea pool", "body": "Pick a mood and get a plan built from your own saved items. Also fixed search for Chinese queries." },
+    { "date": "2026-10-20", "type": "fix", "title": "Mobile pass: 15 fixes in 2 days", "body": "44px tap targets everywhere, iOS double-scroll fixed, admin tables usable on phones." },
+    { "date": "2026-10-18", "type": "ship", "title": "Envelopes v1: turn saved items into plans", "body": "Select items, generate an editable plan, tick lines off, regenerate with edits." },
+    { "date": "2026-10-16", "type": "decision", "title": "Airmail redesign; dropped Redis", "body": "Adopted a postal-themed design system. Moved rate limits into Postgres, removing a paid service." },
+    { "date": "2026-10-10", "type": "decision", "title": "Handed engineering to an AI agent team", "body": "Agents work tickets in isolated branches. I review and merge." },
+    { "date": "2026-05-30", "type": "decision", "title": "Alpha complete; went hosted-only", "body": "All planned features shipped. Dropped the open-source plan to focus on one hosted product." },
+    { "date": "2026-03-26", "type": "start", "title": "First commit", "body": "Monorepo, database schema with row-level security, and Google sign-in on day one." }
+  ]
+}

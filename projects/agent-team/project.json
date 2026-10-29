@@ -1,0 +1,36 @@
+{
+  "id": "agent-team",
+  "name": "AI agent team",
+  "status": "running",
+  "statusLabel": "Running daily",
+  "asOf": "2026-10-29",
+  "short": "A small company of AI agents that plans, codes, tests and opens pull requests on drop-note. I set goals and merge.",
+  "role": "Designed and run the workflow",
+  "stack": "Paperclip, Claude Code, git worktrees, GitHub",
+  "link": null,
+  "images": [
+    { "file": "images/dashboard.jpg", "alt": "Agent team dashboard: run activity, tasks by status and success rate" }
+  ],
+  "stats": [
+    { "key": "agents", "value": "7", "label": "agents" },
+    { "key": "best-day", "value": "6", "label": "tickets shipped in one day" },
+    { "key": "watchdog", "value": "5 min", "label": "watchdog check" }
+  ],
+  "highlights": [
+    "CEO, CTO, CMO and Release Engineer roles, each with its own job",
+    "Every agent codes in its own git worktree, so work never collides",
+    "A Release Engineer agent verifies each PR before I look at it",
+    "A watchdog checks every 5 minutes and restarts stalled runs"
+  ],
+  "next": [
+    "Smarter watchdog that leaves backlog tickets alone",
+    "Run a second product with the same team setup"
+  ],
+  "timeline": [
+    { "date": "2026-10-24", "type": "ship", "title": "Six tickets in parallel, merged the same day", "body": "Envelopes backend, UI, retrieval and a search fix ran side by side without conflicts." },
+    { "date": "2026-10-19", "type": "decision", "title": "Agents wrote their own merge standard", "body": "A mobile-friendly-before-merge checklist every PR now has to pass." },
+    { "date": "2026-10-19", "type": "ship", "title": "Watchdog and concurrency caps", "body": "A 5-minute check restarts stalled runs. Caps keep the team from overloading itself." },
+    { "date": "2026-10-16", "type": "ship", "title": "First all-hands", "body": "Agents proposed new product features; I picked which to build." },
+    { "date": "2026-10-10", "type": "start", "title": "Team set up", "body": "Each agent works in its own git worktree. Nothing public ships without my approval." }
+  ]
+}

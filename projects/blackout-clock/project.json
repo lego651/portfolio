@@ -1,0 +1,36 @@
+{
+  "id": "blackout-clock",
+  "name": "Blackout Clock",
+  "status": "concept",
+  "statusLabel": "Concept",
+  "asOf": "2026-10-29",
+  "short": "A news calendar for prop-firm traders that shows which of their accounts are blocked by each firm's news rules.",
+  "role": "Product research and design",
+  "stack": "Mobile web + push (planned)",
+  "link": null,
+  "images": [
+    { "file": "images/screens.jpg", "alt": "Blackout Clock desktop Now + Today view and phone Now screen (sample data)" },
+    { "file": "images/account-rows.jpg", "alt": "Account rows showing locked, pairs-only and clear status with countdowns (sample data)" }
+  ],
+  "stats": [
+    { "key": "accounts", "value": "10", "label": "accounts per trader" },
+    { "key": "views", "value": "3", "label": "views designed" },
+    { "key": "design-systems", "value": "1", "label": "design system" }
+  ],
+  "highlights": [
+    "Now, Today and Week views show every account's lock status at a glance",
+    "Rule Radar flags when a firm changes its news rules",
+    "Always shows the rule's source: guidance, not a guarantee",
+    "Departure Board design system with split-flap countdowns"
+  ],
+  "next": [
+    "Confirm calendar data licensing",
+    "Build the Now screen as a mobile web app"
+  ],
+  "timeline": [
+    { "date": "2026-10-24", "type": "decision", "title": "Explored a broader AI trading desk", "body": "Researched folding Blackout Clock into a multi-agent trading assistant." },
+    { "date": "2026-10-17", "type": "decision", "title": "Design direction: Departure Board", "body": "A dark, airport-board look for the Now, Today and Week views." },
+    { "date": "2026-10-17", "type": "decision", "title": "Product decisions locked", "body": "Forex and CFD firms first, staff-verified rules, always show the rule's source." },
+    { "date": "2026-10-17", "type": "start", "title": "Research and PRD", "body": "Mapped how prop firms restrict trading around news events." }
+  ]
+}
