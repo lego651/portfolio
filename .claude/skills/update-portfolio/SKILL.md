@@ -7,6 +7,13 @@ description: Refresh this portfolio site from the projects owned by the GitHub a
 
 Run from the root of the `portfolio` repo. Follow `docs/PORTFOLIO_RULES.md` exactly; read it first, every time. `projects/drop-note/project.json` is the gold-standard example.
 
+## Arguments
+
+- none → all projects this account owns, then publish
+- a project id (e.g. `drop-note`) → only that project (must still be owned by this account)
+- `draft only` / `don't push` → stop after step 5
+- `new screenshots` → retake every screenshot for the selected projects
+
 ## Steps
 
 1. **Who am I.** `gh api user --jq .login` → the account. Load `portfolio.config.json` and keep only projects with that `account`. Tell the user in one line which projects you'll update.
