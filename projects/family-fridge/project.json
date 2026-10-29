@@ -1,31 +1,36 @@
 {
   "id": "family-fridge",
   "name": "Family Fridge",
-  "status": "concept",
-  "statusLabel": "Concept",
+  "status": "live",
+  "statusLabel": "Live · private",
   "asOf": "2026-10-29",
-  "short": "An iOS app where a family logs meals by photo or voice. AI estimates the calories and everyone sees it.",
-  "role": "Product shaping and visual design",
-  "stack": "iOS, TestFlight (planned)",
+  "short": "A phone web app where a family logs meals by photo or voice. AI estimates the calories and everyone sees it on a shared fridge.",
+  "role": "Product and visual design; I direct an AI agent team that builds it",
+  "stack": "Expo (React Native + web), Supabase, Edge Functions, Web Push, OpenAI/Anthropic/Gemini, Vercel",
   "link": null,
   "images": [
     { "file": "images/onboarding.jpg", "alt": "Family Fridge onboarding screens: sign in, about you, your family, new kid (sample data)" }
   ],
   "stats": [
-    { "key": "taps", "value": "1", "label": "tap to log" },
-    { "key": "inputs", "value": "2", "label": "ways in: photo or voice" },
+    { "key": "commits", "value": "67", "label": "commits" },
+    { "key": "ai-providers", "value": "3", "label": "AI providers, with fallback" },
     { "key": "kid-targets", "value": "0", "label": "calorie targets for kids" }
   ],
   "highlights": [
-    "A Family Board home with one tile per person",
-    "Log a meal by photo or voice; AI estimates calories",
-    "Any adult can log for a kid; kids need no account",
-    "Kid profiles track meals, not calories, following pediatric guidance"
+    "Log a meal by photo or voice; AI estimates calories, and you can always edit them",
+    "Table: one family question a day; you see others' answers after you answer",
+    "Trades: log a trade from a screenshot; a chosen reviewer verifies it",
+    "Kids need no account and get no calorie targets, following pediatric guidance"
   ],
   "next": [
-    "Build the photo-logging flow for TestFlight"
+    "Native iPhone and Android builds from the same codebase",
+    "Friends beta with a few families"
   ],
   "timeline": [
+    { "date": "2026-10-20", "type": "ship", "title": "Trades: a second log type with review", "body": "Log a trade from a screenshot; AI reads the pair and direction. A reviewer verifies one trade or a whole day." },
+    { "date": "2026-10-19", "type": "ship", "title": "Table: a daily family question", "body": "Questions built from local events, news and weather. Answers unlock once you've answered yourself." },
+    { "date": "2026-10-18", "type": "ship", "title": "v1 web app: logging, fridge, trends, push", "body": "Photo, voice or text logging with AI estimates, the Family Board, cheers, trends and web push. Installs to the Home Screen." },
+    { "date": "2026-10-17", "type": "decision", "title": "React Native with the web app first", "body": "Dropped the iOS-only plan for one Expo codebase across web, iPhone and Android. The web app ships first." },
     { "date": "2026-10-17", "type": "decision", "title": "Visual direction: Gallery Wall", "body": "Picked from six directions after asking for something more polished." },
     { "date": "2026-10-17", "type": "decision", "title": "Product shape agreed", "body": "A Family Board home, one-tap photo/voice capture, and an activity feed." },
     { "date": "2026-10-17", "type": "start", "title": "Requirements", "body": "Family accounts and kid profiles without logins or calorie targets." }

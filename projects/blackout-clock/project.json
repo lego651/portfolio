@@ -1,33 +1,38 @@
 {
   "id": "blackout-clock",
   "name": "Blackout Clock",
-  "status": "concept",
-  "statusLabel": "Concept",
+  "status": "live",
+  "statusLabel": "Live · pre-beta",
   "asOf": "2026-10-29",
   "short": "A news calendar for prop-firm traders that shows which of their accounts are blocked by each firm's news rules.",
-  "role": "Product research and design",
-  "stack": "Mobile web + push (planned)",
-  "link": null,
+  "role": "Product and design; I direct an AI agent team that builds it",
+  "stack": "Next.js, Supabase, Postgres cron jobs, Web Push, Vercel",
+  "link": "https://blackout-clock.vercel.app",
   "images": [
+    { "file": "images/live-today.jpg", "alt": "Blackout Clock Today view: a 24-hour timeline of news lock windows per account (demo trader)" },
     { "file": "images/screens.jpg", "alt": "Blackout Clock desktop Now + Today view and phone Now screen (sample data)" },
     { "file": "images/account-rows.jpg", "alt": "Account rows showing locked, pairs-only and clear status with countdowns (sample data)" }
   ],
   "stats": [
-    { "key": "accounts", "value": "10", "label": "accounts per trader" },
-    { "key": "views", "value": "3", "label": "views designed" },
-    { "key": "design-systems", "value": "1", "label": "design system" }
+    { "key": "firms", "value": "10", "label": "prop firms with sourced rules" },
+    { "key": "days", "value": "8", "label": "days from first commit to live" },
+    { "key": "commits", "value": "32", "label": "commits" }
   ],
   "highlights": [
-    "Now, Today and Week views show every account's lock status at a glance",
-    "Rule Radar flags when a firm changes its news rules",
-    "Always shows the rule's source: guidance, not a guarantee",
-    "Departure Board design system with split-flap countdowns"
+    "Now, Today and Week views show which accounts are locked, and until when",
+    "Push alerts 5 and 1 minutes before each lock window",
+    "Rule Radar checks each firm's rule page daily and flags changes for review",
+    "Every rule shows its source and check date; an unknown rule is never shown as clear"
   ],
   "next": [
-    "Confirm calendar data licensing",
-    "Build the Now screen as a mobile web app"
+    "Private beta with multi-account traders",
+    "Confirm alert timing on real devices"
   ],
   "timeline": [
+    { "date": "2026-10-25", "type": "ship", "title": "Alerts and Rule Radar live", "body": "Push warnings before each lock, daily detection of firm rule changes, and your own rule per account." },
+    { "date": "2026-10-25", "type": "ship", "title": "Public demo, no sign-in wall", "body": "Visitors see a demo trader's accounts on Now, Today and Week. Rule pages are public too." },
+    { "date": "2026-10-24", "type": "ship", "title": "First usable build live", "body": "Sign in, add accounts, and see each one's status now, today and this week, with export and delete." },
+    { "date": "2026-10-24", "type": "decision", "title": "Ten firms in v1: five futures, five CFD", "body": "Added futures firms to v1 and researched every firm's rules from its own published terms." },
     { "date": "2026-10-24", "type": "decision", "title": "Explored a broader AI trading desk", "body": "Researched folding Blackout Clock into a multi-agent trading assistant." },
     { "date": "2026-10-17", "type": "decision", "title": "Design direction: Departure Board", "body": "A dark, airport-board look for the Now, Today and Week views." },
     { "date": "2026-10-17", "type": "decision", "title": "Product decisions locked", "body": "Forex and CFD firms first, staff-verified rules, always show the rule's source." },

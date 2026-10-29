@@ -22,17 +22,17 @@
     {
       "id": "blackout-clock",
       "account": "pomo651",
-      "repo": null,
-      "localPath": "~/TEMP/blackout-clock",
+      "repo": "pomo651/blackout-clock",
+      "localPath": "~/@Pomo651/blackout-clock",
       "read": ["README.md", "CLAUDE.md", "docs/PRD.md", "docs/design/", "git log"],
-      "liveUrl": null,
-      "screenshots": ["design/departure-board.html"]
+      "liveUrl": "https://blackout-clock.vercel.app",
+      "screenshots": ["https://blackout-clock.vercel.app/today", "design/departure-board.html"]
     },
     {
       "id": "family-fridge",
       "account": "pomo651",
-      "repo": null,
-      "localPath": "~/TEMP/family-fridge",
+      "repo": "pomo651/family-fridge",
+      "localPath": "~/@Pomo651/family-fridge",
       "read": ["README.md", "CLAUDE.md", "docs/", "git log"],
       "liveUrl": null,
       "screenshots": ["design/mockups.html"]
