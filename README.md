@@ -2,13 +2,58 @@
 
 Jason's portfolio of AI projects. Plain static site, no build step, deployed to GitHub Pages on every push to `main`: https://lego651.github.io/portfolio/
 
-## How content gets updated
+## How to use
 
-Two GitHub accounts on two Macs each own some projects (see `portfolio.config.json`). Once a month, or whenever there's progress, open Claude Code in this repo on that Mac and say:
+Two GitHub accounts on two Macs each own some projects:
+
+| Account | Owns |
+|---|---|
+| `lego651` | drop-note, AI agent team |
+| `pomo651` | Blackout Clock, Family Fridge |
+
+Ownership and local folder paths live in `portfolio.config.json`. Each Mac only updates its own projects, so the two never conflict.
+
+### One-time setup on each Mac
+
+```bash
+cd ~/TEMP
+git clone git@github.com:lego651/portfolio.git   # skip if already cloned
+```
+
+On the `pomo651` Mac, accept the collaborator invite first: https://github.com/lego651/portfolio/invitations
+
+### Update the site (monthly, or whenever there's progress)
+
+```bash
+cd ~/TEMP/portfolio
+claude
+```
+
+Then send:
 
 > /update-portfolio
 
-Claude reads that Mac's local project repos, updates only that account's `projects/<id>/` folders following [`docs/PORTFOLIO_RULES.md`](docs/PORTFOLIO_RULES.md), and pushes. The site redeploys in about a minute.
+Claude will:
+
+1. Check which GitHub account is logged in (`gh api user`) and pick that account's projects.
+2. Pull the latest portfolio, then read each project's local repo: new commits, docs, and plans.
+3. Update `projects/<id>/project.json`: stats, new timeline events, highlights, "Next up", and screenshots if the UI changed.
+4. Check everything against [`docs/PORTFOLIO_RULES.md`](docs/PORTFOLIO_RULES.md) and show you a summary.
+5. Commit and push. The site redeploys in about a minute.
+
+### Variations
+
+| Say | What happens |
+|---|---|
+| `/update-portfolio` | Update all of this Mac's projects and publish |
+| `/update-portfolio draft only` | Make the changes and show the summary, but don't push |
+| `/update-portfolio drop-note` | Update just one project |
+| `/update-portfolio new screenshots` | Also retake every screenshot |
+| `Add a new project <name> at <path> to the portfolio` | Adds it to `portfolio.config.json`, `site.json` and a new `projects/<id>/` folder (rules §9) |
+
+### Edit by hand
+
+Everything is JSON, so small fixes don't need Claude: edit `site.json` (bio, project order, home numbers) or a `projects/<id>/project.json`, then commit and push. Follow [`docs/PORTFOLIO_RULES.md`](docs/PORTFOLIO_RULES.md); `projects/drop-note/project.json` is the model example.
 
 ## Layout
 
