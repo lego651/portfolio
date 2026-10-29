@@ -68,7 +68,8 @@ p { margin: 0; }
 .thumbs button[aria-pressed="true"] { border-color: var(--accent); }
 .ext { color: var(--accent); font-weight: 700; font-size: 14px; }
 .tl { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
-.tl h1 { font-size: 30px; font-weight: 800; letter-spacing: -.02em; }
+.mtitle { display: none; }
+.tl h1, .mtitle h1 { font-size: 30px; font-weight: 800; letter-spacing: -.02em; }
 
 .graph { position: relative; padding-left: 28px; }
 .graph::before { content: ""; position: absolute; left: 8px; top: 8px; bottom: 8px; width: 2px; background: #d6dbe3; }
@@ -84,9 +85,11 @@ p { margin: 0; }
 .legend span::before { content: "●"; color: var(--c); margin-right: 4px; }
 
 @media (max-width: 760px) {
-  .feat, .dt { grid-template-columns: 1fr; }
+  .feat, .dt { grid-template-columns: minmax(0, 1fr); }
   .feat .im { min-height: 200px; }
   .side { position: static; }
+  .mtitle { display: block; }
+  .dtitle { display: none; }
   .row { grid-template-columns: 96px minmax(0, 1fr); }
   .arrow { display: none; }
 }

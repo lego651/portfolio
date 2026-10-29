@@ -52,10 +52,11 @@
       : "";
     const link = p.link ? `<a class="ext" href="${esc(p.link)}" target="_blank" rel="noopener">${esc(p.link.replace(/^https?:\/\//, ""))} ↗</a>` : "";
     const next = p.next?.length ? `<div class="card pad"><div class="lbl">Next up</div>${checks(p.next).replace('class="checks"', 'class="checks next"')}</div>` : "";
-    return `<a class="back" href="index.html">← All projects</a>
+    const title = `<div class="rt"><h1>${esc(p.name)}</h1>${pill(p)}</div>`;
+    return `<a class="back" href="index.html">← All projects</a><div class="mtitle">${title}</div>
       <div class="dt"><aside class="side"><div class="shot main" data-main>${img(p, p.images[0])}</div>${thumbs}${kpis(p.stats)}
         <div class="card pad"><div class="lbl">Highlights</div>${checks(p.highlights)}<div class="lbl">Built with</div><div class="small">${esc(p.stack)}</div>${link}</div>${next}</aside>
-      <section class="tl"><div class="rt"><h1>${esc(p.name)}</h1>${pill(p)}</div><p class="bio">${esc(p.short)}</p>
+      <section class="tl"><div class="dtitle">${title}</div><p class="bio">${esc(p.short)}</p>
         <div class="lbl">Timeline · newest first</div>${legend}${graph(p)}<div class="foot">Status as of ${full(p.asOf)}</div></section></div>`;
   }
 
