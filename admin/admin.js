@@ -1,6 +1,6 @@
 // Private desk at /admin/. Not linked from the site. Three parts:
 //   today's plan  — saved in this browser (localStorage), suggestions from each project's plan
-//   trading in R  — data/trades.enc.json (encrypted with the password) or, if absent, data/trades.mock.json
+//   trading in R  — read live from the family-fridge database through PLAN_API (/trades); data/trades.mock.json if that fails
 //   projects      — ../site.json + ../projects/<id>/project.json (the `plan` field), order saved in this browser
 // See docs/ADMIN.md for the data formats and how to publish real trades.
 (async function () {
@@ -22,13 +22,6 @@
   };
   const te = new TextEncoder();
   const sha256 = async (s) => [...new Uint8Array(await crypto.subtle.digest("SHA-256", te.encode(s)))].map((b) => b.toString(16).padStart(2, "0")).join("");
-  const unb64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
-  // mirror of admin/tools/encrypt-trades.mjs: PBKDF2-SHA256 → AES-GCM-256
-  async function decrypt(box, pw) {
-    const base = await crypto.subtle.importKey("raw", te.encode(pw), "PBKDF2", false, ["deriveKey"]);
-    const key = await crypto.subtle.deriveKey({ name: "PBKDF2", salt: unb64(box.salt), iterations: box.iter, hash: "SHA-256" }, base, { name: "AES-GCM", length: 256 }, false, ["decrypt"]);
-    return new TextDecoder().decode(await crypto.subtle.decrypt({ name: "AES-GCM", iv: unb64(box.iv) }, key, unb64(box.data)));
-  }
   const getJSON = (u) => fetch(u, { cache: "no-cache" }).then((r) => { if (!r.ok) throw new Error(`${u}: ${r.status}`); return r.json(); });
 
   // ---------- dates ----------
@@ -60,10 +53,15 @@
     const S = await getJSON("../site.json");
     const P = (await Promise.all(S.projects.map((id) => getJSON(`../projects/${id}/project.json`).catch(() => null)))).filter(Boolean);
     let T = null, warn = "";
-    const r = await fetch("data/trades.enc.json", { cache: "no-cache" }).catch(() => null);
-    if (r && r.ok) {
-      try { T = JSON.parse(await decrypt(await r.json(), pw)); T.source = "live"; }
-      catch { warn = "Couldn't decrypt the trading data. It was probably encrypted with a different password. Showing sample data instead."; }
+    // trades: last 12 months, live from the family-fridge database (docs/ADMIN_PLAN_API.md § Trades)
+    if (PLAN_API) {
+      const to = ymd(new Date()), from = ymd(new Date(Date.now() - 365 * 864e5));
+      try {
+        const r = await fetch(`${PLAN_API}/trades?from=${from}&to=${to}`, { headers: { Authorization: "Bearer " + pw }, cache: "no-store" });
+        if (!r.ok) throw new Error(r.status === 404 ? "the trades endpoint isn't built yet" : `error ${r.status}`);
+        T = await r.json(); T.source = "live";
+        if (!Array.isArray(T.trades) || !Array.isArray(T.strategies)) throw new Error("unexpected response");
+      } catch (err) { T = null; warn = `Couldn't load trades from the database (${err.message}). Showing sample data.`; }
     }
     if (!T) { T = await getJSON("data/trades.mock.json"); T.source = "mock"; }
     desk(S, P, T, warn, pw);
@@ -259,15 +257,19 @@
       const ts = all.filter((t) => !hidden.has(t.strategy));
       const byDay = {};
       ts.forEach((t) => (byDay[t.date] ||= []).push(t));
-      const dates = Object.keys(byDay).sort(), sums = dates.map((d) => byDay[d].reduce((a, t) => a + t.r, 0));
-      const total = ts.reduce((a, t) => a + t.r, 0), wins = ts.filter((t) => t.r > 0).length;
-      return { all, ts, byDay, dates, sums, total, wins, per: ts.length ? total / ts.length : 0,
-        green: sums.filter((v) => v > 0).length, best: Math.max(0, ...sums), worst: Math.min(0, ...sums) };
+      // open trades (r === null: result not known yet) get a gray dot but don't count toward R, win rate or green days
+      const closed = ts.filter((t) => t.r != null), rsum = (a) => a.reduce((x, t) => x + (t.r ?? 0), 0);
+      const dates = Object.keys(byDay).sort(), sums = dates.map((d) => rsum(byDay[d]));
+      const closedSums = dates.filter((d) => byDay[d].some((t) => t.r != null)).map((d) => rsum(byDay[d]));
+      const total = rsum(closed), wins = closed.filter((t) => t.r > 0).length;
+      return { all, ts, closed, open: ts.length - closed.length, byDay, dates, sums, total, wins, per: closed.length ? total / closed.length : 0,
+        tdays: closedSums.length, green: closedSums.filter((v) => v > 0).length, best: Math.max(0, ...closedSums), worst: Math.min(0, ...closedSums) };
     }
     function toggles(st) {
       return `<div class="stoggle">${STRATS.map((s) => {
-        const mine = st.all.filter((t) => t.strategy === s.id), tot = mine.reduce((a, t) => a + t.r, 0), w = mine.filter((t) => t.r > 0).length;
-        return `<button type="button" data-strat="${esc(s.id)}" aria-pressed="${!hidden.has(s.id)}" style="--c:${s.c}"><b>${esc(s.name)}</b><small class="${tot >= 0 ? "up" : "dn"}">${R(tot)} · ${mine.length ? Math.round((w / mine.length) * 100) : 0}% win</small></button>`;
+        const mine = st.all.filter((t) => t.strategy === s.id && t.r != null), tot = mine.reduce((a, t) => a + t.r, 0), w = mine.filter((t) => t.r > 0).length;
+        const op = st.all.filter((t) => t.strategy === s.id && t.r == null).length;
+        return `<button type="button" data-strat="${esc(s.id)}" aria-pressed="${!hidden.has(s.id)}" style="--c:${s.c}"><b>${esc(s.name)}</b><small class="${tot >= 0 ? "up" : "dn"}">${R(tot)} · ${mine.length ? Math.round((w / mine.length) * 100) : 0}% win${op ? ` · ${op} open` : ""}</small></button>`;
       }).join("")}</div>`;
     }
     function curve(st) {
@@ -302,10 +304,11 @@
         if (!date) return `<div class="cell off"></div>`;
         const d = +date.slice(8), ts = st.byDay[date];
         if (!ts) return date > today ? `<div class="cell off"><span>${d}</span></div>` : `<div class="cell${date === today ? " today" : ""}"><span>${d}</span><b style="opacity:.45">—</b></div>`;
-        const v = ts.reduce((a, t) => a + t.r, 0), a = Math.min(Math.abs(v) / max, 1);
-        const bg = `color-mix(in srgb, var(${v >= 0 ? "--gn" : "--ls"}) ${Math.round(12 + a * 55)}%, var(--pn))`;
-        const dots = ts.map((t) => `<i class="${t.r > 0 ? "w" : ""}${t.tpEdited ? " tp" : ""}"></i>`).join("");
-        return `<button type="button" class="cell${date === today ? " today" : ""}" data-day="${date}" aria-pressed="${sel === date}" style="background:${bg}" aria-label="${short(date)}: ${R(v)}, ${ts.length} trades"><span>${d}</span><span class="dots">${dots}</span><b>${R(v)}</b></button>`;
+        const anyClosed = ts.some((t) => t.r != null), v = ts.reduce((a, t) => a + (t.r ?? 0), 0), a = Math.min(Math.abs(v) / max, 1);
+        const bg = anyClosed ? `color-mix(in srgb, var(${v >= 0 ? "--gn" : "--ls"}) ${Math.round(12 + a * 55)}%, var(--pn))` : "var(--sf)";
+        const dots = ts.map((t) => `<i class="${t.r == null ? "o" : t.r > 0 ? "w" : ""}${t.tpEdited ? " tp" : ""}"></i>`).join("");
+        const label = anyClosed ? R(v) : "open";
+        return `<button type="button" class="cell${date === today ? " today" : ""}" data-day="${date}" aria-pressed="${sel === date}" style="background:${bg}" aria-label="${short(date)}: ${label}, ${ts.length} trades"><span>${d}</span><span class="dots">${dots}</span><b${anyClosed ? "" : ' style="opacity:.6"'}>${label}</b></button>`;
       };
       return `<div class="heat" style="grid-template-columns:24px repeat(${cols}, minmax(0, 1fr))"><span></span>${names.map((x) => `<span class="dh">${x}</span>`).join("")}
         ${rows.map((r, i) => `<span class="wk">W${i + 1}</span>${r.map(cell).join("")}`).join("")}</div>`;
@@ -315,20 +318,20 @@
       if (!d) return `<div class="dayd"><span class="fhint">No trades this month.</span></div>`;
       const ts = st.byDay[d], tot = ts.reduce((a, t) => a + t.r, 0);
       const sname = (id) => STRATS.find((s) => s.id === id) || { name: id, c: "var(--k-me)" };
-      const k = (r) => (r < 0 ? "var(--ls)" : r > 1.5 ? "var(--ac)" : "var(--gn)");
+      const k = (r) => (r == null ? "var(--mu)" : r < 0 ? "var(--ls)" : r > 1.5 ? "var(--ac)" : "var(--gn)");
       return `<div class="dayd"><div class="ph"><span class="eyebrow">${short(d)} · ${ts.length} trades</span><b class="${tot >= 0 ? "up" : "dn"}" style="font-family:var(--nm);font-size:13px">${R(tot)}</b></div>
-        <ul>${ts.map((t) => { const s = sname(t.strategy); return `<li style="--c:${s.c}"><span class="t">${esc(t.time || "")}</span><i></i><span>${esc(s.name)}</span><span class="tpchip${t.tpEdited ? "" : " none"}">TP edited</span><span class="rchip" style="--k:${k(t.r)}">${R(t.r)}</span></li>`; }).join("")}</ul></div>`;
+        <ul>${ts.map((t) => { const s = sname(t.strategy); return `<li style="--c:${s.c}"><span class="t">${esc(t.time || "")}</span><i></i><span>${esc(s.name)}</span><span class="tpchip${t.tpEdited ? "" : " none"}">TP edited</span><span class="rchip" style="--k:${k(t.r)}">${t.r == null ? "Open" : R(t.r)}</span></li>`; }).join("")}</ul></div>`;
     }
     function tradingPanel() {
       const st = monthStats(), mi = months.indexOf(month);
       const label = parse(month + "-15").toLocaleDateString("en-US", { month: "long", year: "numeric" });
       return `<section class="panel s-trade">
         <div class="ph"><div><div class="eyebrow"><span class="mnav"><button type="button" data-month="-1" aria-label="Previous month"${mi <= 0 ? " disabled" : ""}>‹</button>${esc(label)}<button type="button" data-month="1" aria-label="Next month"${mi >= months.length - 1 ? " disabled" : ""}>›</button></span></div><h3>Trading</h3></div>
-          <div style="text-align:right"><div class="big ${st.total >= 0 ? "up" : "dn"}">${R(st.total)}</div><div class="fhint">${st.ts.length} trades · ${STRATS.length - hidden.size} of ${STRATS.length} strategies</div></div></div>
+          <div style="text-align:right"><div class="big ${st.total >= 0 ? "up" : "dn"}">${R(st.total)}</div><div class="fhint">${st.closed.length} trades${st.open ? ` · ${st.open} open` : ""} · ${STRATS.length - hidden.size} of ${STRATS.length} strategies</div></div></div>
         ${toggles(st)}${curve(st)}${heat(st)}
-        <div class="kv"><div><span>Win rate</span>${st.ts.length ? Math.round((st.wins / st.ts.length) * 100) : 0}%</div><div><span>R per trade</span>${R(st.per)}</div><div><span>Green days</span>${st.green}/${st.dates.length}</div><div><span>Best / worst</span><span style="font-size:13px;letter-spacing:0;text-transform:none"><b class="up">${R(st.best)}</b> / <b class="dn">${R(st.worst)}</b></span></div></div>
+        <div class="kv"><div><span>Win rate</span>${st.closed.length ? Math.round((st.wins / st.closed.length) * 100) : 0}%</div><div><span>R per trade</span>${R(st.per)}</div><div><span>Green days</span>${st.green}/${st.tdays}</div><div><span>Best / worst</span><span style="font-size:13px;letter-spacing:0;text-transform:none"><b class="up">${R(st.best)}</b> / <b class="dn">${R(st.worst)}</b></span></div></div>
         ${dayDetail(st)}
-        <div class="fhint">${T.source === "mock" ? "Sample data" : "Updated " + esc(T.asOf || "")} · click a day to see its trades · long dot = edited TP</div>
+        <div class="fhint">${T.source === "mock" ? "Sample data" : "Live from the database"} · click a day to see its trades · long dot = edited TP</div>
       </section>`;
     }
 
@@ -355,7 +358,7 @@
     function render() {
       document.title = "Desk";
       app.innerHTML = `<header class="top"><div><div class="eyebrow">${now.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" })}</div><h1>Jason's desk</h1></div>
-        <div class="tools"><span class="badge${T.source === "mock" ? " mock" : ""}">Trading: ${T.source === "mock" ? "sample data" : "live snapshot"}</span><a href="../">Portfolio</a><button type="button" id="lock">Lock</button></div></header>
+        <div class="tools"><span class="badge${T.source === "mock" ? " mock" : ""}">Trading: ${T.source === "mock" ? "sample data" : "live"}</span><a href="../">Portfolio</a><button type="button" id="lock">Lock</button></div></header>
         ${warn ? `<div class="warn">${esc(warn)}</div>` : ""}
         <div class="desk">${todayPanel()}${tradingPanel()}${projectsPanel()}</div>`;
     }

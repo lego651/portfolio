@@ -5,69 +5,25 @@ A private page for Jason at https://lego651.github.io/portfolio/admin/. It isn't
 | Part | Where | Data comes from |
 |---|---|---|
 | **Plan** (top left) | Three views; opens on **Today** every time. **Today**: one day's hour grid (7am–9pm) with ‹ › to step days. **3 days**: today plus the next 2 side by side; drag items between days. **Month**: each day's theme; click a day to open it. Every day has its own typed theme (empty by default). Items: drag to move, **click to edit** (title, project, day, start, length), checkbox to mark done, × to delete. | Cached in the browser (`localStorage` key `admin.plan`). **Saved to the family-fridge database** through `PLAN_API`; see [`ADMIN_PLAN_API.md`](ADMIN_PLAN_API.md). The Plan header shows the save status. |
-| **Trading** (bottom left) | Month of results **in R**: strategy switches, cumulative R line, heatmap with one dot per trade, win rate, R per trade, green days, best/worst day, and the trades of the day you click. | `admin/data/trades.enc.json` if it exists, otherwise `admin/data/trades.mock.json` (fake data, with a "sample data" badge). |
+| **Trading** (bottom left) | Month of results **in R**: strategy switches, cumulative R line, heatmap with one dot per trade, win rate, R per trade, green days, best/worst day, and the trades of the day you click. | **Live from the family-fridge database** through `PLAN_API` → `GET /trades` ([`ADMIN_PLAN_API.md`](ADMIN_PLAN_API.md) §7), loaded each time the page opens. If that fails, `admin/data/trades.mock.json` (fake data, "sample data" badge, plus a warning saying why). |
 | **Projects** (right) | Focus stack. The top card shows the full 4-week plan; drag ⋮⋮ to reorder. | `site.json` + `projects/<id>/project.json` → `plan` (written by `/update-portfolio`). Card order is saved in the browser. |
 
-Files: `admin/index.html`, `admin/admin.css`, `admin/admin.js`, `admin/data/`, `admin/tools/encrypt-trades.mjs`.
+Files: `admin/index.html`, `admin/admin.css`, `admin/admin.js`, `admin/data/trades.mock.json` (sample trades).
 
 **After changing `admin.js` or `admin.css`, bump the `?v=` on their links in `admin/index.html`** (use the short commit hash). GitHub Pages lets browsers cache files for 10 minutes, so without a new `?v=` a refresh can keep showing the old version.
 
 ## The password
 
 - The page asks for a password before showing anything. The repo stores only its SHA-256 hash (`PASS_SHA256` in `admin/admin.js`), **never the password itself**. Don't write the password into any file, commit message or doc.
-- The repo is public, so a hash check alone only hides the page. Real trading data is safe because it is **encrypted with the same password** (`trades.enc.json`). Without the password it is unreadable.
+- The repo is public, so the hash check only hides the page. **No real data is in the repo.** Day plans and trades live in the family-fridge database, and the API returns them only to requests carrying the password.
 - The unlocked password is kept in `sessionStorage` (this tab only) so reloads don't ask again. **Lock** clears it.
-- **To change the password:** put the new hash in `admin/admin.js` (`node -e 'console.log(require("crypto").createHash("sha256").update(process.argv[1]).digest("hex"))' 'NEW_PASSWORD'`), then re-run the encrypt step below with the new password.
+- **To change the password:** put the new hash in `admin/admin.js` (`node -e 'console.log(require("crypto").createHash("sha256").update(process.argv[1]).digest("hex"))' 'NEW_PASSWORD'`), and set the same hash as the API's `ADMIN_PASSWORD_SHA256` secret on the pomo651 Mac (`ADMIN_PLAN_API.md`, top).
 
-## Trading data: replacing the mock data with real trades
+## Trading data
 
-R rules: a loss is **−1R**, a win is **+1.5R** by default, and a win where Jason edited the take-profit is **+3R** or **+5R** (any number works; the page just sums `r`).
+Trades are read live from family-fridge's `trade_logs` through the API (`ADMIN_PLAN_API.md` §7). Nothing to export or commit. R rules: a loss is **−1R** and a win is **+1.5R** by default. A win with an edited take-profit is **+3R** or **+5R** once the trade log stores R; until then every win counts as 1.5R. Strategies are the four pairs: GC · NY, NQ · NY, MGC · Asia, MNQ · Asia. Trades without a result yet (open) show as **gray dots** and as "Open" in the day list. They don't count toward R, win rate or green days until they close.
 
-### 1. The format (`admin/data/trades.json`, plain text, git-ignored)
-
-```json
-{
-  "asOf": "2026-10-29",
-  "strategies": [
-    { "id": "orb", "name": "Opening range" },
-    { "id": "vwap", "name": "VWAP fade" }
-  ],
-  "trades": [
-    { "date": "2026-10-01", "time": "09:42", "strategy": "orb", "r": -1, "tpEdited": false },
-    { "date": "2026-10-01", "time": "10:15", "strategy": "vwap", "r": 3, "tpEdited": true }
-  ]
-}
-```
-
-| Field | Rule |
-|---|---|
-| `asOf` | Date of the export, `YYYY-MM-DD`. Shown as "Updated …". |
-| `strategies[]` | Every strategy, in display order. `id` is what trades reference; `name` is shown. A new strategy shows up automatically. |
-| `trades[].date` | Trade date, `YYYY-MM-DD` (local trading day). Weekend trades switch the heatmap to 7 columns. |
-| `trades[].time` | Optional, `HH:MM`. Shown in the day list. |
-| `trades[].strategy` | A `strategies[].id`. |
-| `trades[].r` | Result in R: `-1`, `1.5`, `3`, `5`… If the database stores prices, R = (exit − entry) ÷ (entry − stop), with the sign flipped for shorts. Breakeven is `0`. |
-| `trades[].tpEdited` | `true` when the take-profit was changed from the default 1.5R. Drawn as a long dot. |
-
-`admin/data/trades.mock.json` follows the same format and is the reference example.
-
-### 2. Export, encrypt, publish (on the pomo651 Mac)
-
-The trades live in the **family-fridge** project's database on the pomo651 Mac. Steps for Claude there:
-
-1. The trades are in family-fridge's `trade_logs` table (`~/@Pomo651/family-fridge`; override with `FAMILY_FRIDGE_DIR`). It stores the pair and win/loss, not R or strategy, so the exporter maps: loss −1R, win +1.5R, `tpEdited` false, and one strategy per pair (GC · NY, NQ · NY, MGC · Asia, MNQ · Asia). Trades with no result yet are left out until they close. **Read only; never change that database.**
-2. Export: `node admin/tools/export-trades.mjs`. It runs one SELECT through the logged-in `supabase` CLI (no keys in this repo) and writes `admin/data/trades.json`, all months.
-3. Encrypt: `ADMIN_PASSWORD='…' node admin/tools/encrypt-trades.mjs`. This writes `admin/data/trades.enc.json`. Ask Jason for the password in the session; never save it in a file.
-4. Check locally: `python3 -m http.server 8000`, open http://localhost:8000/admin/, unlock. The badge should say **Trading: live snapshot**.
-5. Commit **only** `admin/data/trades.enc.json` (and the exporter): `git add admin/data/trades.enc.json admin/tools/export-trades.mjs && git commit -m "content: trading snapshot (<date>)" && git push`. Run `git status` first and make sure `trades.json` is not staged.
-
-Keep `trades.mock.json` in the repo. The page falls back to it if the encrypted file is missing.
-
-To refresh later, re-run steps 2–5 (export, encrypt, commit). `/update-portfolio` on pomo651 does this on every run (it asks for the password); `/update-portfolio trading` does only this.
-
-### Message to send Claude on the pomo651 Mac
-
-> In ~/TEMP/portfolio, read docs/ADMIN.md and connect the admin page's trading section to my real trades from the family-fridge database: write the exporter, encrypt with the admin password (ask me for it), check it locally, then commit and push only the encrypted file.
+`admin/data/trades.mock.json` is fake sample data in the same format. The page shows it only when the API can't be reached.
 
 ## Project plans
 
@@ -76,4 +32,3 @@ Each project's `project.json` can have a `plan` (rules: `docs/PORTFOLIO_RULES.md
 ## Not built yet
 
 - Project card order stays per browser (day plans sync through the database).
-- The trading snapshot is only as fresh as the last export.

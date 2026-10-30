@@ -1,4 +1,4 @@
-{"_note":"FAKE sample data for the admin page. Real data goes in trades.enc.json (see docs/ADMIN.md).","asOf":"2026-10-29","strategies":[{"id":"orb","name":"Opening range"},
+{"_note":"FAKE sample data for the admin page, shown only when the trades API can't be reached. Real trades come live from the family-fridge database (docs/ADMIN_PLAN_API.md \u00a77). r: null = open trade (result not known yet).","asOf":"2026-10-29","strategies":[{"id":"orb","name":"Opening range"},
 {"id":"vwap","name":"VWAP fade"},
 {"id":"trend","name":"Trend pullback"},
 {"id":"gap","name":"Gap and go"}],"trades":[{"date":"2026-09-01","time":"10:57","strategy":"trend","r":-1,"tpEdited":false},
@@ -301,4 +301,6 @@
 {"date":"2026-10-29","time":"09:47","strategy":"orb","r":1.5,"tpEdited":false},
 {"date":"2026-10-29","time":"09:56","strategy":"orb","r":-1,"tpEdited":false},
 {"date":"2026-10-29","time":"10:05","strategy":"vwap","r":5,"tpEdited":true},
-{"date":"2026-10-29","time":"10:44","strategy":"vwap","r":-1,"tpEdited":false}]}
+{"date":"2026-10-29","time":"10:44","strategy":"vwap","r":-1,"tpEdited":false},
+{"date":"2026-10-29","time":"21:05","strategy":"mnq","r":null,"tpEdited":false},
+{"date":"2026-10-29","time":"21:40","strategy":"mgc","r":null,"tpEdited":false}]}

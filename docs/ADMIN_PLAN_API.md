@@ -1,4 +1,6 @@
-# Admin desk: plan API (save day plans in the family-fridge database)
+# Admin desk API (day plans + live trades, family-fridge database)
+
+> **New (2026-10-29): add `GET /trades`, see §7.** The admin page already calls it and shows sample data until it exists. The encrypted trades snapshot and its export/encrypt tools were removed. Trades now come live from the database.
 
 **Who builds this:** Claude on the **pomo651 Mac**, which has the family-fridge project (`~/TEMP/family-fridge`) and its database access.
 **Status (2026-10-29): built and live.** Endpoint `https://yvzsdncrpccxqbswemnt.supabase.co/functions/v1/portfolio-admin-plan`, set as `PLAN_API` in `admin/admin.js`. Code in the family-fridge repo: `backend/supabase/functions/portfolio-admin-plan/` (Edge Function, `verify_jwt = false` in `config.toml`) and migration `backend/supabase/migrations/20261030120000_portfolio_admin_plan_days.sql` (table `portfolio_admin_plan_days`, named for the portfolio so it stays apart from the app's tables). Redeploy from `~/@Pomo651/family-fridge/backend`: `supabase functions deploy portfolio-admin-plan --project-ref <ref>`. If the admin password changes, update the secret too: `supabase secrets set --project-ref <ref> ADMIN_PASSWORD_SHA256=<new hash>`.
@@ -124,6 +126,49 @@ On its first connection, each browser uploads days it had saved locally that the
 - [ ] `PLAN_API` is set; the Plan header shows **Saved**; an item added in one browser appears in another after reload.
 - [ ] No secret, key or password in either repo (`git grep` for the key and the password before pushing).
 - [ ] Jason is told the API URL, where the code lives, and how to redeploy it.
+
+## 7. Trades: `GET /trades?from=YYYY-MM-DD&to=YYYY-MM-DD`
+
+The trading section (bottom left) reads Jason's trades **live** through the same Edge Function (`portfolio-admin-plan`), with the same auth and CORS as §4. **Read-only**: one SELECT, never write to `trade_logs` or any app table. Send `Cache-Control: no-store`.
+
+The page asks for the last 365 days through today. Allow ranges up to 400 days; `from`/`to` filter by the trade's local date.
+
+**Response** (`200`, same shape the old snapshot file had):
+
+```json
+{
+  "asOf": "2026-10-29",
+  "strategies": [ { "id": "gc", "name": "GC · NY" }, { "id": "nq", "name": "NQ · NY" }, { "id": "mgc", "name": "MGC · Asia" }, { "id": "mnq", "name": "MNQ · Asia" } ],
+  "trades": [ { "date": "2026-10-27", "time": "21:14", "strategy": "mnq", "r": 1.5, "tpEdited": false },
+              { "date": "2026-10-29", "time": "21:05", "strategy": "mgc", "r": null, "tpEdited": false } ]
+}
+```
+
+**Mapping.** Reuse the logic of the removed exporter, `git show 348cffc:admin/tools/export-trades.mjs`:
+
+| Field | From `trade_logs` |
+|---|---|
+| which trades | Jason's only. Prefer an explicit user id in a function secret (`ADMIN_TRADER_USER_ID`) over the old `name ilike 'jason%'` match. **Include open trades** (`result is null`, win/loss not known yet). The page draws them as gray dots and leaves them out of R totals and win rate. (The old exporter left them out; don't.) |
+| `date`, `time` | `created_at` in the trader's own time zone (`users.timezone`), `YYYY-MM-DD` and `HH:MM`. |
+| `asOf` | Today in that time zone. |
+| `strategy` | One per pair, ids and names exactly as above, in that order. A pair not in the list becomes its own strategy (`id` = lowercase pair), appended. |
+| `r` | **`null` for an open trade.** Otherwise, if `trade_logs` has a real R value (or TP in R), use it; if not, loss → `-1`, win → `1.5`. Breakeven → `0`. |
+| `tpEdited` | `true` when the win's R differs from the default 1.5 (only possible once R is stored). Otherwise `false`. |
+
+Order trades by time, oldest first. Errors follow §4.
+
+**Optional, ask Jason first:** to show edited take-profits (3R / 5R wins as long dots), the trade log needs to store R. For example, add a nullable `r numeric` (or `tp_r`) column to `trade_logs` and a way to set it when logging the trade. That's an app change in family-fridge, so get Jason's OK and keep it a separate migration.
+
+**Test:**
+
+```bash
+curl -s "$API/trades?from=2026-10-01&to=2026-10-31" -H "Authorization: Bearer $PW" | head -c 400   # → {"asOf":…,"strategies":[…],"trades":[…]}
+curl -s -o /dev/null -w "%{http_code}\n" "$API/trades?from=2026-10-01&to=2026-10-31" -H "Authorization: Bearer wrong"   # → 401
+```
+
+Then reload https://lego651.github.io/portfolio/admin/. The badge should say **Trading: live**, with no "Couldn't load trades" warning, and the numbers should match the database. Nothing in this repo needs to change; the page already calls `/trades`.
+
+**Done when:** the endpoint is deployed, both curl checks pass, the badge says "Trading: live", and Jason is told what the R values are based on.
 
 ## How the page uses the API (for reference)
 

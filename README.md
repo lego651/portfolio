@@ -45,12 +45,10 @@ Claude will:
 
 | Say | What happens |
 |---|---|
-| `/update-portfolio` | Update all of this Mac's projects (on pomo651 also the trading snapshot; asks for the admin password) and publish |
+| `/update-portfolio` | Update all of this Mac's projects and publish |
 | `/update-portfolio draft only` | Make the changes and show the summary, but don't push |
 | `/update-portfolio drop-note` | Update just one project |
 | `/update-portfolio new screenshots` | Also retake every screenshot |
-| `/update-portfolio trading` | (pomo651) Only refresh the admin desk's encrypted trading data |
-| `/update-portfolio no trading` | (pomo651) Projects only, skip trading |
 | `Add a new project <name> at <path> to the portfolio` | Adds it to `portfolio.config.json`, `site.json` and a new `projects/<id>/` folder (rules §9) |
 
 ### Edit by hand
@@ -59,7 +57,7 @@ Everything is JSON, so small fixes don't need Claude: edit `site.json` (bio, pro
 
 ## Admin desk
 
-A private page at https://lego651.github.io/portfolio/admin/ (password-protected, not linked from the site): today's plan, trading results in R, and project plans. How it works, and how to swap the sample trading data for real trades: [`docs/ADMIN.md`](docs/ADMIN.md).
+A private page at https://lego651.github.io/portfolio/admin/ (password-protected, not linked from the site): today's plan, trading results in R, and project plans. Plans and trades come live from the family-fridge database. How it works: [`docs/ADMIN.md`](docs/ADMIN.md).
 
 ## Layout
 

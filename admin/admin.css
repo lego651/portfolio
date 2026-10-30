@@ -143,6 +143,7 @@ form.add button { border: 0; border-radius: 11px; padding: 6px 14px; font-weight
 .heat .dots { display: flex; flex-wrap: wrap; gap: 2px; }
 .heat .dots i { width: 6px; height: 6px; border-radius: 50%; background: var(--ls); }
 .heat .dots i.w { background: var(--gn); }
+.heat .dots i.o { background: var(--mu); opacity: .7; }
 .heat .dots i.w.tp { width: 10px; border-radius: 3px; }
 .kv { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; font-family: var(--nm); font-size: 13px; }
 .kv div { border-top: 1px solid var(--ln); padding-top: 6px; display: grid; }
