@@ -5,8 +5,9 @@
 // so no database keys live in this repo. FAMILY_FRIDGE_DIR overrides the family-fridge checkout.
 //
 // trade_logs has no R, strategy or take-profit columns, only result win/loss and the symbol, so:
-//   r = -1 for a loss, +1.5 for a win (the default R), 0 for no result yet; tpEdited = false;
-//   strategy = the market (micro and full contracts together, e.g. MGC + GC = Gold).
+//   r = -1 for a loss, +1.5 for a win (the default R); trades with no result yet (still open) are
+//   left out until they close; tpEdited = false;
+//   strategy = the pair: GC and NQ are the NY-session strategies, MGC and MNQ the Asia-session ones.
 import { execFileSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
@@ -23,24 +24,31 @@ const sql = `
          t.pair, t.result,
          to_char(now() at time zone u.timezone, 'YYYY-MM-DD') as today
   from public.trade_logs t join public.users u on u.id = t.trader_user_id
-  where u.name ilike 'jason%'
+  where u.name ilike 'jason%' and t.result is not null
   order by t.created_at`;
 
 const raw = execFileSync("supabase", ["db", "query", "--linked", "--project-ref", ref, sql], { cwd: dir, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
 const rows = JSON.parse(raw.slice(raw.indexOf("{"))).rows;
 if (!rows?.length) { console.error("No trades returned from trade_logs."); process.exit(1); }
 
-const MARKETS = { GC: "Gold", MGC: "Gold", NQ: "Nasdaq", MNQ: "Nasdaq", ES: "S&P 500", MES: "S&P 500", CL: "Crude oil", MCL: "Crude oil" };
-const market = (pair) => MARKETS[pair] || pair;
-const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+// Display order; a pair not listed here becomes its own strategy, appended.
+const STRATEGIES = [
+  { id: "gc", name: "GC · NY", pair: "GC" },
+  { id: "nq", name: "NQ · NY", pair: "NQ" },
+  { id: "mgc", name: "MGC · Asia", pair: "MGC" },
+  { id: "mnq", name: "MNQ · Asia", pair: "MNQ" },
+];
 const R = { loss: -1, win: 1.5 };
 
-const strategies = [];
+const strategies = STRATEGIES.map(({ id, name }) => ({ id, name }));
 const trades = rows.map((t) => {
-  const name = market(t.pair);
-  const id = slug(name);
-  if (!strategies.some((s) => s.id === id)) strategies.push({ id, name });
-  return { date: t.date, time: t.time, strategy: id, r: R[t.result] ?? 0, tpEdited: false };
+  let s = STRATEGIES.find((x) => x.pair === t.pair);
+  if (!s) {
+    s = { id: t.pair.toLowerCase().replace(/[^a-z0-9]+/g, "-"), name: t.pair, pair: t.pair };
+    STRATEGIES.push(s);
+    strategies.push({ id: s.id, name: s.name });
+  }
+  return { date: t.date, time: t.time, strategy: s.id, r: R[t.result], tpEdited: false };
 });
 
 writeFileSync(output, JSON.stringify({ asOf: rows[0].today, strategies, trades }, null, 2) + "\n");
