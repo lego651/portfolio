@@ -8,7 +8,7 @@
   const PASS_SHA256 = "853178830297d5f3a785b6400fc255851c4eda32422c5abe7051271a214a4eee";
   // Where day plans (themes + items) are saved. "" = this browser only. Set it to the family-fridge plan API base URL
   // (no trailing slash) to save in the database; the API contract is in docs/ADMIN_PLAN_API.md.
-  const PLAN_API = "";
+  const PLAN_API = "https://yvzsdncrpccxqbswemnt.supabase.co/functions/v1/portfolio-admin-plan";
 
   const app = document.getElementById("app");
   const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);

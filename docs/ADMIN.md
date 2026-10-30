@@ -4,7 +4,7 @@ A private page for Jason at https://lego651.github.io/portfolio/admin/. It isn't
 
 | Part | Where | Data comes from |
 |---|---|---|
-| **Plan** (top left) | Three views; opens on **Today** every time. **Today**: one day's hour grid (7am–9pm) with ‹ › to step days. **3 days**: today plus the next 2 side by side; drag items between days. **Month**: each day's theme; click a day to open it. Every day has its own typed theme (empty by default). Items: drag to move, **click to edit** (title, project, day, start, length), checkbox to mark done, × to delete. | Cached in the browser (`localStorage` key `admin.plan`). **Saved to the family-fridge database once `PLAN_API` is set**; see [`ADMIN_PLAN_API.md`](ADMIN_PLAN_API.md). The Plan header shows the save status. |
+| **Plan** (top left) | Three views; opens on **Today** every time. **Today**: one day's hour grid (7am–9pm) with ‹ › to step days. **3 days**: today plus the next 2 side by side; drag items between days. **Month**: each day's theme; click a day to open it. Every day has its own typed theme (empty by default). Items: drag to move, **click to edit** (title, project, day, start, length), checkbox to mark done, × to delete. | Cached in the browser (`localStorage` key `admin.plan`). **Saved to the family-fridge database** through `PLAN_API`; see [`ADMIN_PLAN_API.md`](ADMIN_PLAN_API.md). The Plan header shows the save status. |
 | **Trading** (bottom left) | Month of results **in R**: strategy switches, cumulative R line, heatmap with one dot per trade, win rate, R per trade, green days, best/worst day, and the trades of the day you click. | `admin/data/trades.enc.json` if it exists, otherwise `admin/data/trades.mock.json` (fake data, with a "sample data" badge). |
 | **Projects** (right) | Focus stack. The top card shows the full 4-week plan; drag ⋮⋮ to reorder. | `site.json` + `projects/<id>/project.json` → `plan` (written by `/update-portfolio`). Card order is saved in the browser. |
 
@@ -75,5 +75,5 @@ Each project's `project.json` can have a `plan` (rules: `docs/PORTFOLIO_RULES.md
 
 ## Not built yet
 
-- Day plans sync through the family-fridge database only after the plan API is built ([`ADMIN_PLAN_API.md`](ADMIN_PLAN_API.md)). Project card order stays per browser.
+- Project card order stays per browser (day plans sync through the database).
 - The trading snapshot is only as fresh as the last export.

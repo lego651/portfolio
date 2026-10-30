@@ -1,7 +1,9 @@
 # Admin desk: plan API (save day plans in the family-fridge database)
 
 **Who builds this:** Claude on the **pomo651 Mac**, which has the family-fridge project (`~/TEMP/family-fridge`) and its database access.
-**What's already done:** the admin page (`admin/admin.js`) already speaks this API. It only needs a URL in `PLAN_API`. Until then it saves in the browser, and the Plan header says "This browser only".
+**Status (2026-10-29): built and live.** Endpoint `https://yvzsdncrpccxqbswemnt.supabase.co/functions/v1/portfolio-admin-plan`, set as `PLAN_API` in `admin/admin.js`. Code in the family-fridge repo: `backend/supabase/functions/portfolio-admin-plan/` (Edge Function, `verify_jwt = false` in `config.toml`) and migration `backend/supabase/migrations/20261030120000_portfolio_admin_plan_days.sql` (table `portfolio_admin_plan_days`, named for the portfolio so it stays apart from the app's tables). Redeploy from `~/@Pomo651/family-fridge/backend`: `supabase functions deploy portfolio-admin-plan --project-ref <ref>`. If the admin password changes, update the secret too: `supabase secrets set --project-ref <ref> ADMIN_PASSWORD_SHA256=<new hash>`.
+
+**What was already done:** the admin page (`admin/admin.js`) already speaks this API. It only needs a URL in `PLAN_API`. Until then it saves in the browser, and the Plan header says "This browser only".
 
 ## 1. Goal
 
