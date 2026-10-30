@@ -122,8 +122,8 @@
         if (h < TO) lines.push(`<div class="hr half" style="top:${((h - FROM) * 60 + 30) * PPM}px"></div>`);
       }
       const items = dayOf(date).items;
-      const evs = items.map((x) => { const k = KIND[x.k] || KIND.personal; return `<div class="ev${x.d * PPM < 44 ? " short" : ""}" data-ev="${x.id}" style="--c:${k.c};top:${(x.s - FROM * 60) * PPM}px;height:${Math.max(x.d * PPM - 2, 18)}px">
-        <b>${esc(x.t)}</b><small>${clock(x.s)}–${clock(x.s + x.d)} · ${esc(k.n)}</small><button class="x" type="button" data-del="${x.id}" aria-label="Delete ${esc(x.t)}">×</button></div>`; }).join("");
+      const evs = items.map((x) => { const k = KIND[x.k] || KIND.personal; return `<div class="ev${x.d * PPM < 44 ? " short" : ""}${x.done ? " done" : ""}" data-ev="${x.id}" style="--c:${k.c};top:${(x.s - FROM * 60) * PPM}px;height:${Math.max(x.d * PPM - 2, 18)}px">
+        <b><button class="ck" type="button" data-done="${x.id}" aria-pressed="${!!x.done}" aria-label="${x.done ? "Mark not done" : "Mark done"}: ${esc(x.t)}"></button>${esc(x.t)}</b><small>${clock(x.s)}–${clock(x.s + x.d)} · ${esc(k.n)}</small><button class="x" type="button" data-del="${x.id}" aria-label="Delete ${esc(x.t)}">×</button></div>`; }).join("");
       const n = now.getHours() * 60 + now.getMinutes();
       const line = date === today && n >= FROM * 60 && n <= TO * 60 ? `<div class="now" style="top:${(n - FROM * 60) * PPM}px"></div>` : "";
       const empty = items.length || head ? "" : `<div class="empty">Nothing planned yet. Add an item below or pick one from your projects.</div>`;
@@ -144,18 +144,19 @@
     }
     const chips = (date) => `<div class="chips"><span class="eyebrow">From your projects</span>${suggestions(date).map((s) => `<button class="chip" type="button" data-sugg="${s.k}" data-sugg-date="${date}" style="--c:${KIND[s.k].c}"><i></i>+ ${esc(s.t)}</button>`).join("") || `<span class="fhint">All added</span>`}</div>`;
     const seg = () => `<div class="seg" role="tablist">${[["day", "Today"], ["three", "3 days"], ["month", "Month"]].map(([v, l]) => `<button type="button" role="tab" data-view="${v}" aria-selected="${view === v}">${l}</button>`).join("")}</div>`;
+    const doneOf = (date) => dayOf(date).items.filter((x) => x.done).length;
     const hours = (date) => (dayOf(date).items.reduce((a, x) => a + x.d, 0) / 60).toFixed(1);
 
     function dayView() {
       const d = focusDate, it = dayOf(d).items.length;
       const nav = `<span class="mnav"><button type="button" data-dnav="-1" aria-label="Previous day">‹</button>${esc(parse(d).toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" }))}<button type="button" data-dnav="1" aria-label="Next day">›</button></span>`;
-      return `<div class="ph"><div class="eyebrow">${nav}${d === today ? "" : ` <button type="button" class="linkbtn" data-view="day" data-go-today>Back to today</button>`}</div><span class="fhint">${it} items · ${hours(d)} hrs · drag to move</span></div>
+      return `<div class="ph"><div class="eyebrow">${nav}${d === today ? "" : ` <button type="button" class="linkbtn" data-view="day" data-go-today>Back to today</button>`}</div><span class="fhint">${doneOf(d)}/${it} done · ${hours(d)} hrs · drag to move</span></div>
         <div class="theme"><span class="eyebrow">${d === today ? "Today's theme" : "Theme"}</span>${themeInput(d, "theme-in", "Set a theme for the day…")}</div>
         ${cals([d])}${addForm([d])}${chips(d)}`;
     }
     function threeView() {
       const ds = [today, addDays(today, 1), addDays(today, 2)];
-      const heads = ds.map((d) => `<div class="cn"><b>${dayName(d)}</b><span>${dayOf(d).items.length} · ${hours(d)}h</span></div>${themeInput(d, "theme-sm", "Theme…")}`);
+      const heads = ds.map((d) => `<div class="cn"><b>${dayName(d)}</b><span>${doneOf(d)}/${dayOf(d).items.length} · ${hours(d)}h</span></div>${themeInput(d, "theme-sm", "Theme…")}`);
       return `<div class="ph"><span class="eyebrow">Today and the next 2 days</span><span class="fhint">Drag items between days</span></div>
         ${cals(ds, heads)}${addForm(ds)}${chips(today)}`;
     }
@@ -164,7 +165,7 @@
       const cells = Array(lead).fill(`<div class="mc blank"></div>`);
       for (let n = 1; n <= last; n++) {
         const d = `${calMonth}-${String(n).padStart(2, "0")}`, v = plan.days[d], it = v?.items.length || 0;
-        cells.push(`<button type="button" class="mc${d === today ? " today" : ""}${d < today ? " past" : ""}" data-open="${d}" aria-label="Open ${dayName(d)}"><span>${n}</span>${v?.theme ? `<em>${esc(v.theme)}</em>` : ""}${it ? `<small>${it} item${it > 1 ? "s" : ""}</small>` : ""}</button>`);
+        cells.push(`<button type="button" class="mc${d === today ? " today" : ""}${d < today ? " past" : ""}" data-open="${d}" aria-label="Open ${dayName(d)}"><span>${n}</span>${v?.theme ? `<em>${esc(v.theme)}</em>` : ""}${it ? `<small>${v.items.filter((x) => x.done).length}/${it} done</small>` : ""}</button>`);
       }
       const label = parse(calMonth + "-15").toLocaleDateString("en-US", { month: "long", year: "numeric" });
       return `<div class="ph"><span class="eyebrow"><span class="mnav"><button type="button" data-cmonth="-1" aria-label="Previous month">‹</button>${esc(label)}<button type="button" data-cmonth="1" aria-label="Next month">›</button></span></span><span class="fhint">Click a day to open it</span></div>
@@ -290,6 +291,8 @@
       if (dn) { focusDate = addDays(focusDate, +dn.dataset.dnav); return render(); }
       const cm = e.target.closest("[data-cmonth]");
       if (cm) { const [y, m] = calMonth.split("-").map(Number), d = new Date(y, m - 1 + +cm.dataset.cmonth, 1); calMonth = ymd(d).slice(0, 7); return render(); }
+      const dn2 = e.target.closest("[data-done]");
+      if (dn2) { const f = findItem(+dn2.dataset.done); if (f) f.x.done = !f.x.done; savePlan(); return render(); }
       const del = e.target.closest("[data-del]");
       if (del) { const f = findItem(+del.dataset.del); if (f) dayOf(f.d).items = dayOf(f.d).items.filter((y) => y !== f.x); savePlan(); return render(); }
       const sg = e.target.closest("[data-sugg]");
@@ -318,7 +321,7 @@
     app.onpointerdown = (e) => {
       if (e.button > 0) return;
       const ev = e.target.closest(".cal .ev");
-      if (ev && !e.target.closest("[data-del]")) {
+      if (ev && !e.target.closest("[data-del], [data-done]")) {
         const src = ev.parentNode, f = findItem(+ev.dataset.ev); if (!f) return;
         const x = f.x, offY = e.clientY - ev.getBoundingClientRect().top, all = [...app.querySelectorAll(".cal[data-date]")];
         let target = src;
