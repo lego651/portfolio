@@ -28,6 +28,15 @@
     "Production hardening: uptime monitoring and alerting",
     "Morning Post: an optional daily digest of saved items"
   ],
+  "plan": {
+    "now": "Envelopes shipped: a daily idea pool and the Mood Sheet. Friends are testing the beta.",
+    "weeks": [
+      { "week": "2026-10-26", "goal": "Ship Envelopes: idea pool and Mood Sheet", "done": true },
+      { "week": "2026-11-02", "goal": "Collect beta feedback on Envelopes and the Mood Sheet", "done": false },
+      { "week": "2026-11-09", "goal": "Production hardening: uptime monitoring and alerting", "done": false },
+      { "week": "2026-11-16", "goal": "Draft Morning Post, an optional daily digest", "done": false }
+    ]
+  },
   "timeline": [
     { "date": "2026-10-24", "type": "ship", "title": "Envelopes: Mood Sheet and daily idea pool", "body": "Pick a mood and get a plan built from your own saved items. Also fixed search for Chinese queries." },
     { "date": "2026-10-20", "type": "fix", "title": "Mobile pass: 15 fixes in 2 days", "body": "44px tap targets everywhere, iOS double-scroll fixed, admin tables usable on phones." },

@@ -49,11 +49,16 @@ Claude will:
 | `/update-portfolio draft only` | Make the changes and show the summary, but don't push |
 | `/update-portfolio drop-note` | Update just one project |
 | `/update-portfolio new screenshots` | Also retake every screenshot |
+| `/update-portfolio trading` | (pomo651) Refresh the admin desk's encrypted trading data |
 | `Add a new project <name> at <path> to the portfolio` | Adds it to `portfolio.config.json`, `site.json` and a new `projects/<id>/` folder (rules §9) |
 
 ### Edit by hand
 
 Everything is JSON, so small fixes don't need Claude: edit `site.json` (bio, project order, home numbers) or a `projects/<id>/project.json`, then commit and push. Follow [`docs/PORTFOLIO_RULES.md`](docs/PORTFOLIO_RULES.md); `projects/drop-note/project.json` is the model example.
+
+## Admin desk
+
+A private page at https://lego651.github.io/portfolio/admin/ (password-protected, not linked from the site): today's plan, trading results in R, and project plans. How it works, and how to swap the sample trading data for real trades: [`docs/ADMIN.md`](docs/ADMIN.md).
 
 ## Layout
 
@@ -64,6 +69,7 @@ projects/<id>/project.json    one project's content (example: projects/drop-note
 projects/<id>/images/         screenshots
 index.html, project.html      pages; assets/site.js renders them from the JSON
 docs/PORTFOLIO_RULES.md       rules for every update
+admin/                        private desk page (docs/ADMIN.md)
 .claude/skills/update-portfolio/SKILL.md   the update procedure
 ```
 

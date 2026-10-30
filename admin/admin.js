@@ -1,0 +1,302 @@
+// Private desk at /admin/. Not linked from the site. Three parts:
+//   today's plan  — saved in this browser (localStorage), suggestions from each project's plan
+//   trading in R  — data/trades.enc.json (encrypted with the password) or, if absent, data/trades.mock.json
+//   projects      — ../site.json + ../projects/<id>/project.json (the `plan` field), order saved in this browser
+// See docs/ADMIN.md for the data formats and how to publish real trades.
+(async function () {
+  // SHA-256 of the admin password. The password itself is never stored in the repo. To change it, see docs/ADMIN.md.
+  const PASS_SHA256 = "853178830297d5f3a785b6400fc255851c4eda32422c5abe7051271a214a4eee";
+
+  const app = document.getElementById("app");
+  const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+  const store = {
+    get(k, f) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : f; } catch { return f; } },
+    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
+  };
+  const session = {
+    get() { try { return sessionStorage.getItem("admin.pw"); } catch { return null; } },
+    set(v) { try { v === null ? sessionStorage.removeItem("admin.pw") : sessionStorage.setItem("admin.pw", v); } catch {} }
+  };
+  const te = new TextEncoder();
+  const sha256 = async (s) => [...new Uint8Array(await crypto.subtle.digest("SHA-256", te.encode(s)))].map((b) => b.toString(16).padStart(2, "0")).join("");
+  const unb64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
+  // mirror of admin/tools/encrypt-trades.mjs: PBKDF2-SHA256 → AES-GCM-256
+  async function decrypt(box, pw) {
+    const base = await crypto.subtle.importKey("raw", te.encode(pw), "PBKDF2", false, ["deriveKey"]);
+    const key = await crypto.subtle.deriveKey({ name: "PBKDF2", salt: unb64(box.salt), iterations: box.iter, hash: "SHA-256" }, base, { name: "AES-GCM", length: 256 }, false, ["decrypt"]);
+    return new TextDecoder().decode(await crypto.subtle.decrypt({ name: "AES-GCM", iv: unb64(box.iv) }, key, unb64(box.data)));
+  }
+  const getJSON = (u) => fetch(u, { cache: "no-cache" }).then((r) => { if (!r.ok) throw new Error(`${u}: ${r.status}`); return r.json(); });
+
+  // ---------- dates ----------
+  const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  const parse = (s) => new Date(s + "T12:00:00");
+  const monday = (d) => { const m = new Date(d); m.setDate(m.getDate() - ((m.getDay() + 6) % 7)); return m; };
+  const short = (s) => parse(s).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  const clock = (m) => { const h = Math.floor(m / 60), mm = m % 60; return `${((h + 11) % 12) + 1}:${String(mm).padStart(2, "0")}${h >= 12 ? "pm" : "am"}`; };
+  const hhmm = (m) => String(Math.floor(m / 60)).padStart(2, "0") + ":" + String(m % 60).padStart(2, "0");
+  const R = (v) => { const a = Math.round(Math.abs(v) * 10) / 10; return (v > 0 ? "+" : v < 0 ? "−" : "") + (a % 1 ? a.toFixed(1) : a) + "R"; };
+
+  // ---------- gate ----------
+  function gate(msg) {
+    document.title = "Desk";
+    app.innerHTML = `<form class="gate" id="gate"><div class="eyebrow">Private</div><h1>Jason's desk</h1>
+      <label for="pw" class="fhint">Password</label><input id="pw" type="password" autocomplete="current-password" autofocus>
+      <button type="submit">Unlock</button><p class="gmsg" aria-live="polite">${esc(msg || "")}</p></form>`;
+    document.getElementById("gate").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const pw = document.getElementById("pw").value;
+      if ((await sha256(pw)) !== PASS_SHA256) return gate("That password doesn't match. Try again.");
+      session.set(pw);
+      boot(pw);
+    });
+  }
+
+  async function boot(pw) {
+    app.innerHTML = `<p class="loading">Loading your desk…</p>`;
+    const S = await getJSON("../site.json");
+    const P = (await Promise.all(S.projects.map((id) => getJSON(`../projects/${id}/project.json`).catch(() => null)))).filter(Boolean);
+    let T = null, warn = "";
+    const r = await fetch("data/trades.enc.json", { cache: "no-cache" }).catch(() => null);
+    if (r && r.ok) {
+      try { T = JSON.parse(await decrypt(await r.json(), pw)); T.source = "live"; }
+      catch { warn = "Couldn't decrypt the trading data. It was probably encrypted with a different password. Showing sample data instead."; }
+    }
+    if (!T) { T = await getJSON("data/trades.mock.json"); T.source = "mock"; }
+    desk(S, P, T, warn);
+  }
+
+  // ---------- the desk ----------
+  function desk(S, P, T, warn) {
+    const now = new Date(), today = ymd(now), thisMon = ymd(monday(now));
+    const PCOL = ["var(--k1)", "var(--k2)", "var(--k3)", "var(--k4)", "var(--k5)", "var(--k6)"];
+    const KIND = {};
+    P.forEach((p, i) => { KIND[p.id] = { n: p.name, c: PCOL[i % PCOL.length] }; });
+    KIND.trading = { n: "Trading", c: "var(--k-tr)" };
+    KIND.personal = { n: "Personal", c: "var(--k-me)" };
+    const byId = Object.fromEntries(P.map((p) => [p.id, p]));
+
+    const savedOrder = store.get("admin.order", []).filter((id) => byId[id]);
+    let order = [...savedOrder, ...P.map((p) => p.id).filter((id) => !savedOrder.includes(id))];
+    const dayKey = "admin.day." + today;
+    let day = store.get(dayKey, []), nextId = day.reduce((a, x) => Math.max(a, x.id), 0) + 1;
+    const saveDay = () => store.set(dayKey, day);
+
+    const STRATS = (T.strategies || []).map((s, i) => ({ ...s, c: PCOL[(i + 2) % PCOL.length] }));
+    const months = [...new Set(T.trades.map((t) => t.date.slice(0, 7)))].sort();
+    let month = months.includes(today.slice(0, 7)) ? today.slice(0, 7) : months[months.length - 1] || today.slice(0, 7);
+    let hidden = new Set(), sel = null;
+
+    // plans: project.json `plan` (see docs/PORTFOLIO_RULES.md); falls back to `next` until a project has one
+    const planOf = (p) => p.plan?.weeks?.length
+      ? { now: p.plan.now || p.short, weeks: p.plan.weeks, real: true }
+      : { now: p.short, weeks: (p.next || []).map((goal) => ({ goal })), real: false };
+    // the goal to work on now: this week's if not done yet, else the next unfinished one
+    const curWeek = (pl) => pl.weeks.find((w) => w.week === thisMon && !w.done) || pl.weeks.find((w) => !w.done && (!w.week || w.week >= thisMon)) || pl.weeks.find((w) => !w.done) || pl.weeks[0];
+    const weekLabel = (w) => (!w.week ? "Next" : w.week === thisMon ? "This week" : short(w.week));
+    const top = () => byId[order[0]];
+    const suggestions = () => order.map((id) => ({ k: id, t: curWeek(planOf(byId[id]))?.goal })).filter((s) => s.t && !day.some((x) => x.t === s.t));
+    const freeSlot = (d) => Math.min(Math.max(day.reduce((a, x) => Math.max(a, x.s + x.d), 9 * 60), now.getHours() * 60 + (now.getMinutes() < 30 ? 30 : 60)), 21 * 60 - d);
+
+    // ---------- today ----------
+    const FROM = 7, TO = 21, PPM = .6;
+    function calendar() {
+      const lines = [];
+      for (let h = FROM; h <= TO; h++) {
+        lines.push(`<div class="hr" style="top:${(h - FROM) * 60 * PPM}px"><span>${clock(h * 60).replace(":00", "")}</span></div>`);
+        if (h < TO) lines.push(`<div class="hr half" style="top:${((h - FROM) * 60 + 30) * PPM}px"></div>`);
+      }
+      const evs = day.map((x) => { const k = KIND[x.k] || KIND.personal; return `<div class="ev${x.d * PPM < 34 ? " short" : ""}" data-ev="${x.id}" style="--c:${k.c};top:${(x.s - FROM * 60) * PPM}px;height:${Math.max(x.d * PPM - 2, 18)}px">
+        <b>${esc(x.t)}</b><small>${clock(x.s)}–${clock(x.s + x.d)} · ${esc(k.n)}</small><button class="x" type="button" data-del="${x.id}" aria-label="Delete ${esc(x.t)}">×</button></div>`; }).join("");
+      const n = now.getHours() * 60 + now.getMinutes();
+      const line = n >= FROM * 60 && n <= TO * 60 ? `<div class="now" style="top:${(n - FROM * 60) * PPM}px"></div>` : "";
+      const empty = day.length ? "" : `<div class="empty">Nothing planned yet. Add an item below or pick one from your projects.</div>`;
+      return `<div class="cal" style="height:${(TO - FROM) * 60 * PPM}px">${lines.join("")}${evs}${line}${empty}</div>`;
+    }
+    function todayPanel() {
+      const t = top(), goal = t ? curWeek(planOf(t))?.goal : "";
+      const hrs = (day.reduce((a, x) => a + x.d, 0) / 60).toFixed(1);
+      return `<section class="panel s-today">
+        <div class="theme"><span class="eyebrow">Today's theme · your #1 project</span><b>${t ? esc(t.name) + (goal ? ": " + esc(goal.charAt(0).toLowerCase() + goal.slice(1)) : "") : "Pick a focus project"}</b></div>
+        <div class="ph"><h3>Today</h3><span class="fhint">${day.length} items · ${hrs} hrs · drag to move</span></div>
+        ${calendar()}
+        <form class="add" id="add">
+          <input type="text" id="n-t" placeholder="Add something to do" aria-label="New item">
+          <input type="time" id="n-s" value="${hhmm(freeSlot(60))}" step="900" aria-label="Start time">
+          <select id="n-d" aria-label="Length"><option value="30">30 min</option><option value="60" selected>1 hr</option><option value="90">1.5 hr</option><option value="120">2 hr</option></select>
+          <select id="n-k" aria-label="Project">${Object.entries(KIND).map(([k, v]) => `<option value="${k}"${k === "personal" ? " selected" : ""}>${esc(v.n)}</option>`).join("")}</select>
+          <button type="submit">Add</button></form>
+        <div class="chips"><span class="eyebrow">From your projects</span>${suggestions().map((s) => `<button class="chip" type="button" data-sugg="${s.k}" style="--c:${KIND[s.k].c}"><i></i>+ ${esc(s.t)}</button>`).join("") || `<span class="fhint">All added</span>`}</div>
+      </section>`;
+    }
+
+    // ---------- trading in R ----------
+    function monthStats() {
+      const all = T.trades.filter((t) => t.date.startsWith(month));
+      const ts = all.filter((t) => !hidden.has(t.strategy));
+      const byDay = {};
+      ts.forEach((t) => (byDay[t.date] ||= []).push(t));
+      const dates = Object.keys(byDay).sort(), sums = dates.map((d) => byDay[d].reduce((a, t) => a + t.r, 0));
+      const total = ts.reduce((a, t) => a + t.r, 0), wins = ts.filter((t) => t.r > 0).length;
+      return { all, ts, byDay, dates, sums, total, wins, per: ts.length ? total / ts.length : 0,
+        green: sums.filter((v) => v > 0).length, best: Math.max(0, ...sums), worst: Math.min(0, ...sums) };
+    }
+    function toggles(st) {
+      return `<div class="stoggle">${STRATS.map((s) => {
+        const mine = st.all.filter((t) => t.strategy === s.id), tot = mine.reduce((a, t) => a + t.r, 0), w = mine.filter((t) => t.r > 0).length;
+        return `<button type="button" data-strat="${esc(s.id)}" aria-pressed="${!hidden.has(s.id)}" style="--c:${s.c}"><b>${esc(s.name)}</b><small class="${tot >= 0 ? "up" : "dn"}">${R(tot)} · ${mine.length ? Math.round((w / mine.length) * 100) : 0}% win</small></button>`;
+      }).join("")}</div>`;
+    }
+    function curve(st) {
+      if (st.dates.length < 2) return "";
+      const w = 560, h = 130, L = 34, Rr = 8, Tp = 8, B = 18;
+      let c = 0; const cum = st.sums.map((v) => (c += v)), n = cum.length;
+      const lo = Math.min(0, ...cum), hi = Math.max(1, ...cum);
+      const X = (i) => L + (i / (n - 1)) * (w - L - Rr), Y = (v) => Tp + (1 - (v - lo) / (hi - lo)) * (h - Tp - B);
+      const step = hi - lo > 40 ? 20 : hi - lo > 16 ? 10 : 5, ticks = [];
+      for (let v = Math.ceil(lo / step) * step; v <= hi; v += step) ticks.push(v);
+      const xi = [...new Set([0, Math.round((n - 1) / 3), Math.round((2 * (n - 1)) / 3), n - 1])];
+      const p = cum.map((v, i) => `${i ? "L" : "M"}${X(i).toFixed(1)},${Y(v).toFixed(1)}`).join("");
+      return `<svg viewBox="0 0 ${w} ${h}" width="100%" role="img" aria-label="Cumulative R this month">
+        ${ticks.map((v) => `<line x1="${L}" x2="${w - Rr}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--ln)" stroke-width="1"${v ? ' stroke-dasharray="2 3"' : ""}/><text x="${L - 5}" y="${Y(v) + 3.5}" text-anchor="end" font-size="10" fill="var(--mu)" font-family="JetBrains Mono, monospace">${v}R</text>`).join("")}
+        ${xi.map((i) => `<text x="${X(i)}" y="${h - 4}" text-anchor="${i === n - 1 ? "end" : i ? "middle" : "start"}" font-size="10" fill="var(--mu)" font-family="JetBrains Mono, monospace">${short(st.dates[i])}</text>`).join("")}
+        <path d="${p}L${X(n - 1)},${Y(0)}L${X(0)},${Y(0)}Z" fill="var(--ac)" fill-opacity=".12" stroke="none"/>
+        <path d="${p}" fill="none" stroke="var(--ac)" stroke-width="2.2"/><circle cx="${X(n - 1)}" cy="${Y(cum[n - 1])}" r="4" fill="var(--ac)"/></svg>`;
+    }
+    function heat(st) {
+      const [y, m] = month.split("-").map(Number), last = new Date(y, m, 0).getDate();
+      const weekend = T.trades.some((t) => t.date.startsWith(month) && [0, 6].includes(parse(t.date).getDay()));
+      const cols = weekend ? 7 : 5, names = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].slice(0, cols);
+      const max = Math.max(1, ...st.sums.map(Math.abs)), rows = [];
+      let row = null;
+      for (let d = 1; d <= last; d++) {
+        const date = `${month}-${String(d).padStart(2, "0")}`, col = (parse(date).getDay() + 6) % 7;
+        if (col >= cols) continue;
+        if (!row || col === 0) { row = Array(cols).fill(null); rows.push(row); }
+        row[col] = date;
+      }
+      const cell = (date) => {
+        if (!date) return `<div class="cell off"></div>`;
+        const d = +date.slice(8), ts = st.byDay[date];
+        if (!ts) return date > today ? `<div class="cell off"><span>${d}</span></div>` : `<div class="cell${date === today ? " today" : ""}"><span>${d}</span><b style="opacity:.45">—</b></div>`;
+        const v = ts.reduce((a, t) => a + t.r, 0), a = Math.min(Math.abs(v) / max, 1);
+        const bg = `color-mix(in srgb, var(${v >= 0 ? "--gn" : "--ls"}) ${Math.round(12 + a * 55)}%, var(--pn))`;
+        const dots = ts.map((t) => `<i class="${t.r > 0 ? "w" : ""}${t.tpEdited ? " tp" : ""}"></i>`).join("");
+        return `<button type="button" class="cell${date === today ? " today" : ""}" data-day="${date}" aria-pressed="${sel === date}" style="background:${bg}" aria-label="${short(date)}: ${R(v)}, ${ts.length} trades"><span>${d}</span><span class="dots">${dots}</span><b>${R(v)}</b></button>`;
+      };
+      return `<div class="heat" style="grid-template-columns:24px repeat(${cols}, minmax(0, 1fr))"><span></span>${names.map((x) => `<span class="dh">${x}</span>`).join("")}
+        ${rows.map((r, i) => `<span class="wk">W${i + 1}</span>${r.map(cell).join("")}`).join("")}</div>`;
+    }
+    function dayDetail(st) {
+      const d = sel && st.byDay[sel] ? sel : st.dates[st.dates.length - 1];
+      if (!d) return `<div class="dayd"><span class="fhint">No trades this month.</span></div>`;
+      const ts = st.byDay[d], tot = ts.reduce((a, t) => a + t.r, 0);
+      const sname = (id) => STRATS.find((s) => s.id === id) || { name: id, c: "var(--k-me)" };
+      const k = (r) => (r < 0 ? "var(--ls)" : r > 1.5 ? "var(--ac)" : "var(--gn)");
+      return `<div class="dayd"><div class="ph"><span class="eyebrow">${short(d)} · ${ts.length} trades</span><b class="${tot >= 0 ? "up" : "dn"}" style="font-family:var(--nm);font-size:13px">${R(tot)}</b></div>
+        <ul>${ts.map((t) => { const s = sname(t.strategy); return `<li style="--c:${s.c}"><span class="t">${esc(t.time || "")}</span><i></i><span>${esc(s.name)}</span><span class="tpchip${t.tpEdited ? "" : " none"}">TP edited</span><span class="rchip" style="--k:${k(t.r)}">${R(t.r)}</span></li>`; }).join("")}</ul></div>`;
+    }
+    function tradingPanel() {
+      const st = monthStats(), mi = months.indexOf(month);
+      const label = parse(month + "-15").toLocaleDateString("en-US", { month: "long", year: "numeric" });
+      return `<section class="panel s-trade">
+        <div class="ph"><div><div class="eyebrow"><span class="mnav"><button type="button" data-month="-1" aria-label="Previous month"${mi <= 0 ? " disabled" : ""}>‹</button>${esc(label)}<button type="button" data-month="1" aria-label="Next month"${mi >= months.length - 1 ? " disabled" : ""}>›</button></span></div><h3>Trading</h3></div>
+          <div style="text-align:right"><div class="big ${st.total >= 0 ? "up" : "dn"}">${R(st.total)}</div><div class="fhint">${st.ts.length} trades · ${STRATS.length - hidden.size} of ${STRATS.length} strategies</div></div></div>
+        ${toggles(st)}${curve(st)}${heat(st)}
+        <div class="kv"><div><span>Win rate</span>${st.ts.length ? Math.round((st.wins / st.ts.length) * 100) : 0}%</div><div><span>R per trade</span>${R(st.per)}</div><div><span>Green days</span>${st.green}/${st.dates.length}</div><div><span>Best / worst</span><span style="font-size:13px;letter-spacing:0;text-transform:none"><b class="up">${R(st.best)}</b> / <b class="dn">${R(st.worst)}</b></span></div></div>
+        ${dayDetail(st)}
+        <div class="fhint">${T.source === "mock" ? "Sample data" : "Updated " + esc(T.asOf || "")} · click a day to see its trades · long dot = edited TP</div>
+      </section>`;
+    }
+
+    // ---------- projects ----------
+    function projectsPanel() {
+      return `<section class="s-proj"><div class="ph" style="padding:2px 4px"><h3>Projects</h3><span class="fhint">Drag ⋮⋮ to the top to focus</span></div>
+        <div class="list" id="plist">${order.map((id, i) => {
+          const p = byId[id], pl = planOf(p), c = KIND[id].c, cw = curWeek(pl);
+          const done = pl.weeks.filter((w) => w.done).length;
+          const noplan = pl.real ? "" : `<div class="noplan">No plan yet; showing "Next up". The owner's /update-portfolio adds it.</div>`;
+          const head = `<button class="grip" type="button" data-grip aria-label="Drag ${esc(p.name)}">⋮⋮</button>`;
+          if (i === 0) return `<article class="pc focus" data-id="${id}" style="--c:${c}">
+            <div class="pc-h">${head}<span class="focuslbl">Focus</span><span class="pill">${esc(p.statusLabel)}</span></div>
+            <div class="nm">${esc(p.name)}</div><p class="nowline">${esc(pl.now)}</p>
+            <ol class="road">${pl.weeks.map((w) => `<li class="${w === cw ? "cur" : ""}${w.done ? " done" : ""}"><span>${weekLabel(w)}</span><i></i><div>${esc(w.goal)}</div></li>`).join("")}</ol>
+            ${pl.real ? `<div class="ring"><svg width="34" height="34" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="15" fill="none" stroke="currentColor" stroke-opacity=".2" stroke-width="4"/><circle cx="18" cy="18" r="15" fill="none" stroke="var(--ac)" stroke-width="4" stroke-linecap="round" stroke-dasharray="${(done / pl.weeks.length) * 94.2} 94.2" transform="rotate(-90 18 18)"/></svg>${done} of ${pl.weeks.length} weeks done · plan as of ${esc(p.asOf)}</div>` : noplan}</article>`;
+          return `<article class="pc" data-id="${id}" style="--c:${c}">
+            <div class="pc-h">${head}<span class="nm">${esc(p.name)}</span><span class="pill">${esc(p.statusLabel)}</span></div>
+            <p class="nowline">${esc(pl.now)}</p>${cw ? `<div class="w1"><b>${cw.week ? weekLabel(cw).toUpperCase() : "NEXT"}</b>${esc(cw.goal)}</div>` : ""}
+            ${pl.real ? `<div class="mini"><i style="width:${(done / pl.weeks.length) * 100}%"></i></div>` : noplan}</article>`;
+        }).join("")}</div></section>`;
+    }
+
+    function render() {
+      document.title = "Desk";
+      app.innerHTML = `<header class="top"><div><div class="eyebrow">${now.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" })}</div><h1>Jason's desk</h1></div>
+        <div class="tools"><span class="badge${T.source === "mock" ? " mock" : ""}">Trading: ${T.source === "mock" ? "sample data" : "live snapshot"}</span><a href="../">Portfolio</a><button type="button" id="lock">Lock</button></div></header>
+        ${warn ? `<div class="warn">${esc(warn)}</div>` : ""}
+        <div class="desk">${todayPanel()}${tradingPanel()}${projectsPanel()}</div>`;
+    }
+
+    app.onclick = (e) => {
+      if (e.target.closest("#lock")) { session.set(null); return gate(); }
+      const del = e.target.closest("[data-del]");
+      if (del) { day = day.filter((x) => x.id !== +del.dataset.del); saveDay(); return render(); }
+      const sg = e.target.closest("[data-sugg]");
+      if (sg) { const t = curWeek(planOf(byId[sg.dataset.sugg])).goal; day.push({ id: nextId++, s: freeSlot(60), d: 60, t, k: sg.dataset.sugg }); saveDay(); return render(); }
+      const st = e.target.closest("[data-strat]");
+      if (st) { const id = st.dataset.strat; if (hidden.has(id)) hidden.delete(id); else if (hidden.size < STRATS.length - 1) hidden.add(id); return render(); }
+      const mo = e.target.closest("[data-month]");
+      if (mo && !mo.disabled) { month = months[months.indexOf(month) + +mo.dataset.month]; sel = null; return render(); }
+      const dy = e.target.closest("[data-day]");
+      if (dy) { sel = dy.dataset.day; render(); }
+    };
+    app.onsubmit = (e) => {
+      if (e.target.id !== "add") return;
+      e.preventDefault();
+      const t = document.getElementById("n-t").value.trim(); if (!t) return;
+      const d = +document.getElementById("n-d").value, k = document.getElementById("n-k").value, v = document.getElementById("n-s").value;
+      const s = v ? Math.max(FROM * 60, Math.min(TO * 60 - d, (([h, m]) => h * 60 + m)(v.split(":").map(Number)))) : freeSlot(d);
+      day.push({ id: nextId++, s, d, t, k }); saveDay(); render();
+    };
+    // drag: calendar blocks move in 15-minute steps; project cards reorder (top card = focus + today's theme)
+    app.onpointerdown = (e) => {
+      if (e.button > 0) return;
+      const ev = e.target.closest(".cal .ev");
+      if (ev && !e.target.closest("[data-del]")) {
+        const x = day.find((y) => y.id === +ev.dataset.ev), y0 = e.clientY, s0 = x.s;
+        ev.setPointerCapture(e.pointerId); ev.classList.add("dragging");
+        const move = (m) => {
+          x.s = Math.max(FROM * 60, Math.min(TO * 60 - x.d, Math.round((s0 + (m.clientY - y0) / PPM) / 15) * 15));
+          ev.style.top = (x.s - FROM * 60) * PPM + "px";
+          ev.querySelector("small").textContent = `${clock(x.s)}–${clock(x.s + x.d)} · ${(KIND[x.k] || KIND.personal).n}`;
+        };
+        const up = () => { ev.removeEventListener("pointermove", move); saveDay(); render(); };
+        ev.addEventListener("pointermove", move);
+        ev.addEventListener("pointerup", up, { once: true }); ev.addEventListener("pointercancel", up, { once: true });
+        return;
+      }
+      const grip = e.target.closest("[data-grip]"); if (!grip) return;
+      const item = grip.closest("[data-id]"), list = item.parentNode;
+      e.preventDefault(); grip.setPointerCapture(e.pointerId); item.classList.add("lift");
+      const move = (m) => {
+        const over = document.elementFromPoint(m.clientX, m.clientY)?.closest("[data-id]");
+        if (!over || over === item || over.parentNode !== list) return;
+        const kids = [...list.children], r = over.getBoundingClientRect(), down = kids.indexOf(over) > kids.indexOf(item);
+        if (down && m.clientY > r.top + r.height / 2) list.insertBefore(item, over.nextSibling);
+        else if (!down && m.clientY < r.top + r.height / 2) list.insertBefore(item, over);
+      };
+      const up = () => {
+        grip.removeEventListener("pointermove", move); item.classList.remove("lift");
+        order = [...list.children].map((c) => c.dataset.id); store.set("admin.order", order); render();
+      };
+      grip.addEventListener("pointermove", move);
+      grip.addEventListener("pointerup", up, { once: true }); grip.addEventListener("pointercancel", up, { once: true });
+    };
+
+    render();
+  }
+
+  if (!window.crypto?.subtle) { app.innerHTML = `<p class="loading">This page needs https (or localhost) to unlock.</p>`; return; }
+  const saved = session.get();
+  if (saved && (await sha256(saved)) === PASS_SHA256) boot(saved); else gate();
+})();

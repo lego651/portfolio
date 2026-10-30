@@ -27,6 +27,7 @@ site.json                      bio, featured project, project order, home KPIs
 portfolio.config.json          project → account, repo, local path, what to read
 projects/<id>/project.json     one project's public content
 projects/<id>/images/*.jpg     1–3 screenshots for that project
+admin/                         private desk page; see docs/ADMIN.md (not touched by content updates)
 ```
 
 Home KPIs in `site.json` point at project stats by key (`"drop-note:commits"`), so updating a project's stat updates the home page too. `"count:projects"` is computed.
@@ -48,6 +49,7 @@ Home KPIs in `site.json` point at project stats by key (`"drop-note:commits"`), 
 | `stats` | Exactly 3 items `{ "key", "value", "label" }`. `value` is a string. Keep existing `key`s stable (home KPIs reference them). |
 | `highlights` | 3–4 bullets, each ≤ 90 characters. What the product does or what's impressive about it — not a changelog. |
 | `next` | 1–3 bullets: what's planned next. Plain promises only; no dates unless certain. |
+| `plan` | For the private admin desk (`docs/ADMIN.md`), but **public** like everything here. `{ "now": "…", "weeks": [{ "week": "YYYY-MM-DD", "goal": "…", "done": false }] }`. `now` is one sentence on the current state (≤ 120 characters). `weeks` covers this week and the next 3: 1–4 items, `week` is that week's **Monday**, `goal` ≤ 70 characters, `done` true once it happened. Base it on the repo's docs, open issues and recent work; drop finished past weeks and roll forward each update. |
 | `timeline` | Newest first. See §4. |
 
 ## 4. Timeline rules

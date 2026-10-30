@@ -1,2 +1,4 @@
+# Real trading data must never be committed in plain text (see docs/ADMIN.md)
+admin/data/trades.json
 .DS_Store
 node_modules/

@@ -26,6 +26,14 @@
     "Smarter watchdog that leaves backlog tickets alone",
     "Run a second product with the same team setup"
   ],
+  "plan": {
+    "now": "Seven agents plan, code and test drop-note every day. I review every merge.",
+    "weeks": [
+      { "week": "2026-10-26", "goal": "Build Envelopes end to end with the team", "done": true },
+      { "week": "2026-11-02", "goal": "Smarter watchdog that leaves backlog tickets alone", "done": false },
+      { "week": "2026-11-16", "goal": "Plan a second product with the same team setup", "done": false }
+    ]
+  },
   "timeline": [
     { "date": "2026-10-24", "type": "ship", "title": "Six tickets in parallel, merged the same day", "body": "Envelopes backend, UI, retrieval and a search fix ran side by side without conflicts." },
     { "date": "2026-10-19", "type": "decision", "title": "Agents wrote their own merge standard", "body": "A mobile-friendly-before-merge checklist every PR now has to pass." },

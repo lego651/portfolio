@@ -13,6 +13,7 @@ Run from the root of the `portfolio` repo. Follow `docs/PORTFOLIO_RULES.md` exac
 - a project id (e.g. `drop-note`) → only that project (must still be owned by this account)
 - `draft only` / `don't push` → stop after step 5
 - `new screenshots` → retake every screenshot for the selected projects
+- `trading` → (pomo651 only) refresh the admin desk's encrypted trading snapshot per `docs/ADMIN.md`, then publish
 
 ## Steps
 
@@ -24,7 +25,7 @@ Run from the root of the `portfolio` repo. Follow `docs/PORTFOLIO_RULES.md` exac
    - Find the repo: expand `localPath`. If it doesn't exist, look for a folder of that name under `~/TEMP`, `~/code`, `~/dev` and `~` (depth 2) that is a git repo; if still not found, ask the user for the path and save it to `portfolio.config.json`. If `repo` is `null`, fill it from `git remote get-url origin`.
    - `git fetch` (if it has a remote), then read what changed since the project's current `asOf`: `git log --since=<asOf> --format='%ad|%s' --date=short origin/main` (or `HEAD` without a remote), plus the files listed under `read` in the config — those explain status and plans better than commit messages.
    - Recompute every git-based stat with the commands in rules §5.
-   - Update `projects/<id>/project.json`: bump `asOf`; refresh `stats`; add 0–3 timeline events at the top (milestones, not commits); revise `status`, `statusLabel`, `highlights`, `next` only if reality changed.
+   - Update `projects/<id>/project.json`: bump `asOf`; refresh `stats`; add 0–3 timeline events at the top (milestones, not commits); revise `status`, `statusLabel`, `highlights`, `next` only if reality changed. Always refresh `plan` (rules §3): mark finished weeks `done`, roll it forward so it covers this week plus the next 3, and update `plan.now`.
    - Screenshots: only if the UI visibly changed or the project has none (rules §7). Look at every image you produce.
 
 4. **Validate.**
