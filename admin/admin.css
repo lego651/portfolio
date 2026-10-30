@@ -186,3 +186,15 @@ form.add button { border: 0; border-radius: 11px; padding: 6px 14px; font-weight
 .road li:not(:last-child)::after { content: ""; position: absolute; left: 83px; top: 16px; bottom: -2px; width: 2px; background: color-mix(in srgb, var(--pn) 22%, transparent); }
 .ring { display: flex; align-items: center; gap: 10px; font-size: 12.5px; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+/* save status + item editor */
+.sync { font-size: 11.5px; color: var(--mu); margin-left: auto; margin-right: 4px; align-self: center; }
+.sync.bad { color: var(--ls); font-weight: 600; }
+.cal .ev.editing { outline: 2px solid var(--ac); outline-offset: 1px; z-index: 3; }
+form.edit { display: grid; gap: 8px; padding: 12px; border-radius: 14px; border: 1px solid var(--ac); background: color-mix(in srgb, var(--ac) 6%, var(--pn)); }
+form.edit input, form.edit select { border-radius: 11px; padding: 6px 9px; font-size: 13px; min-width: 0; border: 1px solid var(--ln); background: var(--bg); width: 100%; }
+.erow { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; }
+.erow label { display: grid; gap: 2px; font-size: 11px; color: var(--mu); flex: 1 1 110px; min-width: 0; }
+.erow button { border: 0; border-radius: 11px; padding: 6px 14px; font-weight: 700; cursor: pointer; font-size: 13px; background: var(--ik); color: var(--pn); }
+.erow button.ghost { background: transparent; color: var(--ik); border: 1px solid var(--ln); }
+.erow button.danger { color: var(--ls); margin-left: auto; }
