@@ -457,8 +457,11 @@
         if (down && m.clientY > r.bottom - edge) list.insertBefore(item, over.nextSibling);
         else if (!down && m.clientY < r.bottom - edge) list.insertBefore(item, over);
       };
-      const up = () => {
+      const up = (u) => {
         item.classList.remove("lift");
+        // letting go anywhere on the focus card makes this card the new focus
+        const at = u && document.elementFromPoint(u.clientX, u.clientY)?.closest("[data-id]");
+        if (at && at !== item && at === list.firstElementChild) list.insertBefore(item, at);
         order = [...list.children].map((c) => c.dataset.id); store.set("admin.order", order); render();
       };
       follow(move, up);
