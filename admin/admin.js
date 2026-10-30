@@ -71,10 +71,12 @@
   function desk(S, P, T, warn, pw) {
     const now = new Date(), today = ymd(now), thisMon = ymd(monday(now));
     const PCOL = ["var(--k1)", "var(--k2)", "var(--k3)", "var(--k4)", "var(--k5)", "var(--k6)"];
+    // Plan categories, each with its own color. Hues are spaced by the golden angle, so any number of categories stay
+    // distinct; saturation/lightness come from --cs/--cl so they suit light and dark. To add a category, append it here
+    // (projects come from site.json and are added automatically); it takes the next hue.
+    const CATS = [["personal", "Personal"], ["trading", "Trading"], ...P.map((p) => [p.id, p.name])];
     const KIND = {};
-    P.forEach((p, i) => { KIND[p.id] = { n: p.name, c: PCOL[i % PCOL.length] }; });
-    KIND.trading = { n: "Trading", c: "var(--k-tr)" };
-    KIND.personal = { n: "Personal", c: "var(--k-me)" };
+    CATS.forEach(([id, n], i) => { KIND[id] = { n, c: `hsl(${Math.round((i * 137.508 + 20) % 360)} var(--cs) var(--cl))` }; });
     const byId = Object.fromEntries(P.map((p) => [p.id, p]));
 
     const savedOrder = store.get("admin.order", []).filter((id) => byId[id]);
@@ -185,8 +187,13 @@
         if (h < TO) lines.push(`<div class="hr half" style="top:${((h - FROM) * 60 + 30) * PPM}px"></div>`);
       }
       const items = dayOf(date).items;
-      const evs = items.map((x) => { const k = KIND[x.k] || KIND.personal; return `<div class="ev${x.d * PPM < 44 ? " short" : ""}${x.done ? " done" : ""}${x.id === editing ? " editing" : ""}" data-ev="${esc(x.id)}" style="--c:${k.c};top:${(x.s - FROM * 60) * PPM}px;height:${Math.max(x.d * PPM - 2, 18)}px">
-        <b><button class="ck" type="button" data-done="${esc(x.id)}" aria-pressed="${!!x.done}" aria-label="${x.done ? "Mark not done" : "Mark done"}: ${esc(x.t)}"></button>${esc(x.t)}</b><small>${clock(x.s)}–${clock(x.s + x.d)} · ${esc(k.n)}</small><button class="x" type="button" data-del="${esc(x.id)}" aria-label="Delete ${esc(x.t)}">×</button></div>`; }).join("");
+      // blocks show only the content, clipped to the lines that fit; hover shows the full text, time and category
+      const evs = items.map((x) => {
+        const k = KIND[x.k] || KIND.personal, h = Math.max(x.d * PPM - 2, 18), lines = Math.max(1, Math.floor((h - 4) / 15.5));
+        const tip = `${x.t}\n${clock(x.s)}–${clock(x.s + x.d)} · ${k.n}${x.done ? " · done" : ""}`;
+        return `<div class="ev${h < 26 ? " short" : ""}${x.done ? " done" : ""}${x.id === editing ? " editing" : ""}" data-ev="${esc(x.id)}" title="${esc(tip)}" style="--c:${k.c};top:${(x.s - FROM * 60) * PPM}px;height:${h}px">
+        <button class="ck" type="button" data-done="${esc(x.id)}" aria-pressed="${!!x.done}" aria-label="${x.done ? "Mark not done" : "Mark done"}: ${esc(x.t)}"></button><span class="tt" style="-webkit-line-clamp:${lines}">${esc(x.t)}</span><small class="dt"></small><button class="x" type="button" data-del="${esc(x.id)}" aria-label="Delete ${esc(x.t)}">×</button></div>`;
+      }).join("");
       const n = now.getHours() * 60 + now.getMinutes();
       const line = date === today && n >= FROM * 60 && n <= TO * 60 ? `<div class="now" style="top:${(n - FROM * 60) * PPM}px"></div>` : "";
       const empty = items.length || head ? "" : `<div class="empty">Nothing planned yet. Add an item below or pick one from your projects.</div>`;
@@ -238,6 +245,15 @@
       return `<div class="ph"><span class="eyebrow">Today and the next 2 days</span><span class="fhint">Drag items between days</span></div>
         ${cals(ds, heads)}${editForm()}${addForm(ds)}${chips(today)}`;
     }
+    // Month view chart: finished items per category this month, most to least
+    function doneChart() {
+      const counts = {};
+      for (const [d, v] of Object.entries(plan.days)) if (d.startsWith(calMonth)) v.items.forEach((x) => { if (x.done) counts[x.k] = (counts[x.k] || 0) + 1; });
+      const rows = Object.entries(counts).sort((a, b) => b[1] - a[1]), total = rows.reduce((a, r) => a + r[1], 0), max = Math.max(1, ...rows.map((r) => r[1]));
+      if (!rows.length) return `<div class="dchart"><span class="eyebrow">Finished this month</span><p class="fhint">Nothing checked off yet. Finished items show up here by category.</p></div>`;
+      return `<div class="dchart"><div class="ph"><span class="eyebrow">Finished this month</span><b class="dtot">${total} done</b></div>
+        <div class="bars">${rows.map(([k, n]) => { const c = KIND[k] || { n: k, c: "var(--mu)" }; return `<div class="bc" title="${esc(c.n)}: ${n} finished"><span class="bv">${n}</span><i style="height:${Math.max(4, Math.round((n / max) * 96))}px;background:${c.c}"></i><span class="bn">${esc(c.n)}</span></div>`; }).join("")}</div></div>`;
+    }
     function monthView() {
       const [y, m] = calMonth.split("-").map(Number), last = new Date(y, m, 0).getDate(), lead = (new Date(y, m - 1, 1).getDay() + 6) % 7;
       const cells = Array(lead).fill(`<div class="mc blank"></div>`);
@@ -247,7 +263,7 @@
       }
       const label = parse(calMonth + "-15").toLocaleDateString("en-US", { month: "long", year: "numeric" });
       return `<div class="ph"><span class="eyebrow"><span class="mnav"><button type="button" data-cmonth="-1" aria-label="Previous month">‹</button>${esc(label)}<button type="button" data-cmonth="1" aria-label="Next month">›</button></span></span><span class="fhint">Click a day to open it</span></div>
-        <div class="mgrid">${["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((x) => `<span class="dh">${x}</span>`).join("")}${cells.join("")}</div>`;
+        ${doneChart()}<div class="mgrid">${["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((x) => `<span class="dh">${x}</span>`).join("")}${cells.join("")}</div>`;
     }
     const todayPanel = () => `<section class="panel s-today"><div class="ph"><h3>Plan</h3><span id="sync" class="sync${/Not saved/.test(sync) ? " bad" : ""}" title="${PLAN_API ? "Saved to the family-fridge database" : "Not connected to a database yet; see docs/ADMIN_PLAN_API.md"}">${sync}</span>${seg()}</div>${view === "day" ? dayView() : view === "three" ? threeView() : monthView()}</section>`;
 
@@ -434,7 +450,7 @@
           x.s = Math.max(FROM * 60, Math.min(TO * 60 - x.d, Math.round((FROM * 60 + (m.clientY - offY - tr.top) / PPM) / 15) * 15));
           ev.style.top = (x.s - FROM * 60) * PPM + "px";
           ev.style.transform = `translateX(${tr.left - sr.left}px)`;
-          ev.querySelector("small").textContent = `${target === src ? "" : dayName(target.dataset.date) + " · "}${clock(x.s)}–${clock(x.s + x.d)}`;
+          ev.querySelector(".dt").textContent = `${target === src ? "" : dayName(target.dataset.date) + " · "}${clock(x.s)}–${clock(x.s + x.d)}`;
         };
         const up = () => {
           if (!moved) { x.s = s0; editing = editing === x.id ? null : x.id; return render(); }
