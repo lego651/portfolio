@@ -51,7 +51,7 @@ Each element of `items`:
 |---|---|---|
 | `id` | string | Unique, made by the browser (UUID). Keep as-is. |
 | `t` | string | Title, 1–200 chars. |
-| `k` | string | Project key: a portfolio project id (`drop-note`, `agent-team`, `blackout-clock`, `family-fridge`…), `trading`, or `personal`. Accept any string of ≤ 40 chars `[a-z0-9-]`. |
+| `k` | string | Project key: a portfolio project id (`drop-note`, `blackout-clock`, `family-fridge`…), `trading`, or `personal`. Accept any string of ≤ 40 chars `[a-z0-9-]`. |
 | `s` | integer | Start, minutes after midnight (0–1439). |
 | `d` | integer | Length in minutes (5–720). |
 | `done` | boolean | Optional; `true` when checked off. |

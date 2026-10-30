@@ -8,7 +8,7 @@ Two GitHub accounts on two Macs each own some projects:
 
 | Account | Owns |
 |---|---|
-| `lego651` | drop-note, AI agent team |
+| `lego651` | drop-note |
 | `pomo651` | Blackout Clock, Family Fridge |
 
 Ownership and local folder paths live in `portfolio.config.json`. Each Mac only updates its own projects, so the two never conflict.

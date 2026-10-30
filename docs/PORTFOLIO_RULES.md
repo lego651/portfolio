@@ -12,7 +12,7 @@ Two GitHub accounts, on two Macs, share this repo. Ownership is set in [`portfol
 
 | Account | Machine | Owns |
 |---|---|---|
-| `lego651` | Mac 1 | `drop-note`, `agent-team` |
+| `lego651` | Mac 1 | `drop-note` |
 | `pomo651` | Mac 2 | `blackout-clock`, `family-fridge` |
 
 - Find the current account with `gh api user --jq .login`.

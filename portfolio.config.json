@@ -11,15 +11,6 @@
       "screenshots": ["https://dropnote.me"]
     },
     {
-      "id": "agent-team",
-      "account": "lego651",
-      "repo": null,
-      "localPath": "~/TEMP/drop-note",
-      "read": ["git log of drop-note (agent-made PRs)", "Paperclip dashboard http://localhost:3100/DRO/dashboard (drop-note company ONLY)", "~/.claude/paper-clip/CONTEXT.md"],
-      "liveUrl": null,
-      "screenshots": ["http://localhost:3100/DRO/dashboard"]
-    },
-    {
       "id": "blackout-clock",
       "account": "pomo651",
       "repo": "pomo651/blackout-clock",
