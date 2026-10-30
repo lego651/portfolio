@@ -53,15 +53,15 @@ R rules: a loss is **−1R**, a win is **+1.5R** by default, and a win where Jas
 
 The trades live in the **family-fridge** project's database on the pomo651 Mac. Steps for Claude there:
 
-1. Find where trades are stored in `~/TEMP/family-fridge` (schema, migrations, or the DB client). Identify the fields for date, strategy, result in R (or prices), and whether the TP was edited. **Read only; never change that database.**
-2. Write `admin/tools/export-trades.mjs` in this repo. It reads the trades (credentials from the family-fridge env file or the environment, **never hard-coded or committed**) and writes `admin/data/trades.json` in the format above. Export all months (the page has month arrows).
+1. The trades are in family-fridge's `trade_logs` table (`~/@Pomo651/family-fridge`; override with `FAMILY_FRIDGE_DIR`). It stores the pair and win/loss, not R or strategy, so the exporter maps: loss −1R, win +1.5R, `tpEdited` false, and one strategy per pair (GC · NY, NQ · NY, MGC · Asia, MNQ · Asia). Trades with no result yet are left out until they close. **Read only; never change that database.**
+2. Export: `node admin/tools/export-trades.mjs`. It runs one SELECT through the logged-in `supabase` CLI (no keys in this repo) and writes `admin/data/trades.json`, all months.
 3. Encrypt: `ADMIN_PASSWORD='…' node admin/tools/encrypt-trades.mjs`. This writes `admin/data/trades.enc.json`. Ask Jason for the password in the session; never save it in a file.
 4. Check locally: `python3 -m http.server 8000`, open http://localhost:8000/admin/, unlock. The badge should say **Trading: live snapshot**.
 5. Commit **only** `admin/data/trades.enc.json` (and the exporter): `git add admin/data/trades.enc.json admin/tools/export-trades.mjs && git commit -m "content: trading snapshot (<date>)" && git push`. Run `git status` first and make sure `trades.json` is not staged.
 
 Keep `trades.mock.json` in the repo. The page falls back to it if the encrypted file is missing.
 
-To refresh later, re-run steps 2–5 (export, encrypt, commit). Monthly via `/update-portfolio` on pomo651, or whenever Jason asks.
+To refresh later, re-run steps 2–5 (export, encrypt, commit). `/update-portfolio` on pomo651 does this on every run (it asks for the password); `/update-portfolio trading` does only this.
 
 ### Message to send Claude on the pomo651 Mac
 

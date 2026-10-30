@@ -45,11 +45,12 @@ Claude will:
 
 | Say | What happens |
 |---|---|
-| `/update-portfolio` | Update all of this Mac's projects and publish |
+| `/update-portfolio` | Update all of this Mac's projects (on pomo651 also the trading snapshot; asks for the admin password) and publish |
 | `/update-portfolio draft only` | Make the changes and show the summary, but don't push |
 | `/update-portfolio drop-note` | Update just one project |
 | `/update-portfolio new screenshots` | Also retake every screenshot |
-| `/update-portfolio trading` | (pomo651) Refresh the admin desk's encrypted trading data |
+| `/update-portfolio trading` | (pomo651) Only refresh the admin desk's encrypted trading data |
+| `/update-portfolio no trading` | (pomo651) Projects only, skip trading |
 | `Add a new project <name> at <path> to the portfolio` | Adds it to `portfolio.config.json`, `site.json` and a new `projects/<id>/` folder (rules §9) |
 
 ### Edit by hand
