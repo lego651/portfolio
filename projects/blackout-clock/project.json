@@ -28,6 +28,15 @@
     "Private beta with multi-account traders",
     "Confirm alert timing on real devices"
   ],
+  "plan": {
+    "now": "Core app, alerts and Rule Radar are live; next is a private beta with multi-account traders.",
+    "weeks": [
+      { "week": "2026-10-26", "goal": "Confirm alert timing on real devices", "done": false },
+      { "week": "2026-11-02", "goal": "Recruit the first multi-account traders for a private beta", "done": false },
+      { "week": "2026-11-09", "goal": "Fix rule-accuracy and usability issues beta traders find", "done": false },
+      { "week": "2026-11-16", "goal": "Measure activation and account-setup speed in the beta", "done": false }
+    ]
+  },
   "timeline": [
     { "date": "2026-10-25", "type": "ship", "title": "Alerts and Rule Radar live", "body": "Push warnings before each lock, daily detection of firm rule changes, and your own rule per account." },
     { "date": "2026-10-25", "type": "ship", "title": "Public demo, no sign-in wall", "body": "Visitors see a demo trader's accounts on Now, Today and Week. Rule pages are public too." },

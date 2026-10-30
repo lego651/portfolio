@@ -12,7 +12,7 @@
     { "file": "images/onboarding.jpg", "alt": "Family Fridge onboarding screens: sign in, about you, your family, new kid (sample data)" }
   ],
   "stats": [
-    { "key": "commits", "value": "67", "label": "commits" },
+    { "key": "commits", "value": "69", "label": "commits" },
     { "key": "ai-providers", "value": "3", "label": "AI providers, with fallback" },
     { "key": "kid-targets", "value": "0", "label": "calorie targets for kids" }
   ],
@@ -26,6 +26,15 @@
     "Native iPhone and Android builds from the same codebase",
     "Friends beta with a few families"
   ],
+  "plan": {
+    "now": "The web app is in daily use by my family for meals, Table and Trades; native builds come next.",
+    "weeks": [
+      { "week": "2026-10-26", "goal": "Fix what daily use finds: futures symbols now save on trades", "done": true },
+      { "week": "2026-11-02", "goal": "A week of daily family use; triage and fix what breaks", "done": false },
+      { "week": "2026-11-09", "goal": "First native iPhone and Android builds from the same codebase", "done": false },
+      { "week": "2026-11-16", "goal": "Privacy policy and terms ahead of a friends beta", "done": false }
+    ]
+  },
   "timeline": [
     { "date": "2026-10-20", "type": "ship", "title": "Trades: a second log type with review", "body": "Log a trade from a screenshot; AI reads the pair and direction. A reviewer verifies one trade or a whole day." },
     { "date": "2026-10-19", "type": "ship", "title": "Table: a daily family question", "body": "Questions built from local events, news and weather. Answers unlock once you've answered yourself." },
