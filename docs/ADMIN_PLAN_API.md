@@ -127,6 +127,10 @@ On its first connection, each browser uploads days it had saved locally that the
 - [ ] No secret, key or password in either repo (`git grep` for the key and the password before pushing).
 - [ ] Jason is told the API URL, where the code lives, and how to redeploy it.
 
+## 6b. Reserved day: the to-do log
+
+The admin page stores its **to-do log** (unscheduled to-dos) as the day **`2000-01-01`** through the same `GET`/`PUT /days` calls. Items there use `s: 0`. No server change is needed. Don't delete that row, and don't reject that date.
+
 ## 7. Trades: `GET /trades?from=YYYY-MM-DD&to=YYYY-MM-DD`
 
 The trading section (bottom left) reads Jason's trades **live** through the same Edge Function (`portfolio-admin-plan`), with the same auth and CORS as §4. **Read-only**: one SELECT, never write to `trade_logs` or any app table. Send `Cache-Control: no-store`.

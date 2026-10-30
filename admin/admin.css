@@ -210,3 +210,21 @@ form.edit input, form.edit select { border-radius: 11px; padding: 6px 9px; font-
 .bc i { display: block; width: 100%; max-width: 44px; border-radius: 6px 6px 2px 2px; box-shadow: 0 1px 0 var(--ln); }
 .bv { font-family: var(--nm); font-size: 12px; font-weight: 700; }
 .bn { font-size: 11px; color: var(--mu); width: 100%; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-top: 1px solid var(--ln); padding-top: 3px; }
+
+/* to-do log */
+.log { display: grid; gap: 8px; border-top: 1px solid var(--ln); padding-top: 12px; }
+.logform { display: flex; gap: 6px; flex-wrap: wrap; }
+.logform input, .logform select { border-radius: 11px; padding: 6px 9px; font-size: 13px; min-width: 0; border: 1px solid var(--ln); background: var(--bg); }
+.logform input[type="text"] { flex: 1 1 160px; }
+.logform button { border: 0; border-radius: 11px; padding: 6px 14px; font-weight: 700; cursor: pointer; font-size: 13px; background: var(--ik); color: var(--pn); }
+.logform button.ghost { background: transparent; color: var(--ik); border: 1px solid var(--ln); }
+.loglist { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.loglist li { display: grid; grid-template-columns: 8px minmax(0, 1fr) auto auto auto; gap: 8px; align-items: center; padding: 5px 6px 5px 10px; border-radius: 10px; background: color-mix(in srgb, var(--c, var(--mu)) 9%, var(--pn)); }
+.loglist li.lediting { display: block; background: color-mix(in srgb, var(--ac) 6%, var(--pn)); outline: 1px solid var(--ac); }
+.loglist li.fhint { display: block; background: transparent; padding-left: 0; }
+.loglist li > i { width: 8px; height: 8px; border-radius: 50%; background: var(--c); }
+.loglist .lt { border: 0; background: none; padding: 0; text-align: left; font-size: 13.5px; cursor: text; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.loglist .lt:hover { text-decoration: underline dotted; }
+.loglist .lk { font-size: 11px; color: var(--mu); white-space: nowrap; }
+.loglist .lp { width: 24px; height: 24px; border-radius: 8px; border: 1px solid color-mix(in srgb, var(--c) 55%, var(--pn)); background: var(--pn); color: var(--ik); font-size: 16px; line-height: 1; cursor: pointer; padding: 0; }
+.loglist .lp:hover { background: var(--c); color: var(--pn); }

@@ -1,5 +1,5 @@
 // Private desk at /admin/. Not linked from the site. Three parts:
-//   today's plan  — saved in this browser (localStorage), suggestions from each project's plan
+//   day plans     — themes + items per day, plus a to-do log; saved through PLAN_API (cached in this browser)
 //   trading in R  — read live from the family-fridge database through PLAN_API (/trades); data/trades.mock.json if that fails
 //   projects      — ../site.json + ../projects/<id>/project.json (the `plan` field), order saved in this browser
 // See docs/ADMIN.md for the data formats and how to publish real trades.
@@ -136,6 +136,23 @@
       } catch (err) { showSync("Not saved yet, retrying"); console.warn("plan load failed", err); }
       render();
     }
+    // The to-do log (things to do some day) is stored as one reserved day, so it syncs through the same API.
+    const LOG = "2000-01-01";
+    const logItems = () => dayOf(LOG).items;
+    // Unchecked items from past days go back to the top of the log; finished ones stay on their day (month chart).
+    function rollover() {
+      const moved = [];
+      for (const [d, v] of Object.entries(plan.days)) {
+        if (d === LOG || d >= today) continue;
+        const open = v.items.filter((x) => !x.done);
+        if (!open.length) continue;
+        v.items = v.items.filter((x) => x.done);
+        logItems().unshift(...open.map((x) => ({ id: x.id, t: x.t, k: x.k, s: 0, d: x.d })));
+        moved.push(d);
+      }
+      if (moved.length) touch(LOG, ...moved);
+      return moved.length;
+    }
     async function connect() { // first connection: upload days that exist only in this browser, then load
       if (!PLAN_API) return;
       try {
@@ -148,7 +165,9 @@
           store.set("admin.plan.migrated", true);
         }
         await flush();
-        await need(today, addDays(today, 2));
+        if (!loaded.has(LOG)) { await loadRange(LOG, LOG); loaded.add(LOG); }
+        await need(addDays(today, -40), today, addDays(today, 2)); // recent past too, so unfinished items can roll over
+        if (rollover()) render();
       } catch (err) { showSync("Not saved yet, retrying"); console.warn("plan connect failed", err); }
     }
     const addDays = (d, n) => { const x = parse(d); x.setDate(x.getDate() + n); return ymd(x); };
@@ -167,7 +186,6 @@
     // the goal to work on now: this week's if not done yet, else the next unfinished one
     const curWeek = (pl) => pl.weeks.find((w) => w.week === thisMon && !w.done) || pl.weeks.find((w) => !w.done && (!w.week || w.week >= thisMon)) || pl.weeks.find((w) => !w.done) || pl.weeks[0];
     const weekLabel = (w) => (!w.week ? "Next" : w.week === thisMon ? "This week" : short(w.week));
-    const suggestions = (date) => order.map((id) => ({ k: id, t: curWeek(planOf(byId[id]))?.goal })).filter((s) => s.t && !dayOf(date).items.some((x) => x.t === s.t));
     const freeSlot = (date, d) => {
       const after = date === today ? now.getHours() * 60 + (now.getMinutes() < 30 ? 30 : 60) : 9 * 60;
       return Math.min(Math.max(dayOf(date).items.reduce((a, x) => Math.max(a, x.s + x.d), 9 * 60), after), TO * 60 - d);
@@ -201,7 +219,7 @@
     }
     const cals = (dates, heads) => `<div class="calscroll"><div class="cals" style="grid-template-columns:44px repeat(${dates.length}, minmax(${dates.length > 1 ? 150 : 0}px, 1fr))">${gutter(!!heads)}${dates.map((d, i) => column(d, heads && heads[i])).join("")}</div></div>`;
     const themeInput = (date, cls, ph) => `<input class="${cls}" type="text" id="theme-${date}" data-theme-date="${date}" value="${esc(dayOf(date).theme)}" placeholder="${ph}" aria-label="Theme for ${dayName(date)}" maxlength="80">`;
-    const kindOptions = () => Object.entries(KIND).map(([k, v]) => `<option value="${k}"${k === "personal" ? " selected" : ""}>${esc(v.n)}</option>`).join("");
+    const kindOptions = (sel = "personal") => Object.entries(KIND).map(([k, v]) => `<option value="${k}"${k === sel ? " selected" : ""}>${esc(v.n)}</option>`).join("");
     function addForm(dates) {
       const first = dates[0];
       return `<form class="add" id="add">
@@ -227,7 +245,19 @@
         </div>
         <div class="erow"><button type="submit">Save</button><button type="button" class="ghost" data-edit-cancel>Cancel</button><button type="button" class="ghost danger" data-del="${esc(x.id)}">Delete</button></div></form>`;
     }
-    const chips = (date) => `<div class="chips"><span class="eyebrow">From your projects</span>${suggestions(date).map((s) => `<button class="chip" type="button" data-sugg="${s.k}" data-sugg-date="${date}" style="--c:${KIND[s.k].c}"><i></i>+ ${esc(s.t)}</button>`).join("") || `<span class="fhint">All added</span>`}</div>`;
+    let logEdit = null; // id of the log item being edited
+    function logPanel(target) {
+      const items = logItems();
+      const row = (x) => {
+        const k = KIND[x.k] || KIND.personal;
+        if (x.id === logEdit) return `<li class="lediting"><form id="logedit" class="logform"><input type="text" id="le-t" value="${esc(x.t)}" aria-label="To-do" maxlength="200"><select id="le-k" aria-label="Category">${kindOptions(x.k)}</select><button type="submit">Save</button><button type="button" class="ghost" data-logcancel>Cancel</button></form></li>`;
+        return `<li style="--c:${k.c}"><i></i><button type="button" class="lt" data-logedit="${esc(x.id)}" title="${esc(x.t)} (click to edit)">${esc(x.t)}</button><span class="lk">${esc(k.n)}</span>
+          <button type="button" class="lp" data-logadd="${esc(x.id)}" data-logto="${target}" title="Add to ${dayName(target)}" aria-label="Add ${esc(x.t)} to ${dayName(target)}">+</button><button type="button" class="x" data-del="${esc(x.id)}" aria-label="Delete ${esc(x.t)}">×</button></li>`;
+      };
+      return `<div class="log"><div class="ph"><span class="eyebrow">To-do log · ${items.length}</span><span class="fhint">+ adds it to ${dayName(target).toLowerCase() === "today" ? "today" : dayName(target)} · unfinished items come back here</span></div>
+        <form id="logadd" class="logform"><input type="text" id="l-t" placeholder="Log a to-do for later" aria-label="New to-do" maxlength="200"><select id="l-k" aria-label="Category">${kindOptions()}</select><button type="submit">Log</button></form>
+        <ul class="loglist">${items.map(row).join("") || `<li class="fhint">Nothing logged yet.</li>`}</ul></div>`;
+    }
     const seg = () => `<div class="seg" role="tablist">${[["day", "Today"], ["three", "3 days"], ["month", "Month"]].map(([v, l]) => `<button type="button" role="tab" data-view="${v}" aria-selected="${view === v}">${l}</button>`).join("")}</div>`;
     const doneOf = (date) => dayOf(date).items.filter((x) => x.done).length;
     const hours = (date) => (dayOf(date).items.reduce((a, x) => a + x.d, 0) / 60).toFixed(1);
@@ -237,13 +267,13 @@
       const nav = `<span class="mnav"><button type="button" data-dnav="-1" aria-label="Previous day">‹</button>${esc(parse(d).toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" }))}<button type="button" data-dnav="1" aria-label="Next day">›</button></span>`;
       return `<div class="ph"><div class="eyebrow">${nav}${d === today ? "" : ` <button type="button" class="linkbtn" data-view="day" data-go-today>Back to today</button>`}</div><span class="fhint">${doneOf(d)}/${it} done · ${hours(d)} hrs · drag to move</span></div>
         <div class="theme"><span class="eyebrow">${d === today ? "Today's theme" : "Theme"}</span>${themeInput(d, "theme-in", "Set a theme for the day…")}</div>
-        ${cals([d])}${editForm()}${addForm([d])}${chips(d)}`;
+        ${cals([d])}${editForm()}${addForm([d])}${logPanel(d)}`;
     }
     function threeView() {
       const ds = [today, addDays(today, 1), addDays(today, 2)];
       const heads = ds.map((d) => `<div class="cn"><b>${dayName(d)}</b><span>${doneOf(d)}/${dayOf(d).items.length} · ${hours(d)}h</span></div>${themeInput(d, "theme-sm", "Theme…")}`);
       return `<div class="ph"><span class="eyebrow">Today and the next 2 days</span><span class="fhint">Drag items between days</span></div>
-        ${cals(ds, heads)}${editForm()}${addForm(ds)}${chips(today)}`;
+        ${cals(ds, heads)}${editForm()}${addForm(ds)}${logPanel(today)}`;
     }
     // Month view chart: finished items per category this month, most to least
     function doneChart() {
@@ -395,8 +425,16 @@
       if (e.target.closest("[data-edit-cancel]")) { editing = null; return render(); }
       const del = e.target.closest("[data-del]");
       if (del) { const f = findItem(del.dataset.del); if (f) { dayOf(f.d).items = dayOf(f.d).items.filter((y) => y !== f.x); touch(f.d); } if (editing === del.dataset.del) editing = null; return render(); }
-      const sg = e.target.closest("[data-sugg]");
-      if (sg) { const d = sg.dataset.suggDate, t = curWeek(planOf(byId[sg.dataset.sugg])).goal; dayOf(d).items.push({ id: uid(), s: freeSlot(d, 60), d: 60, t, k: sg.dataset.sugg }); touch(d); return render(); }
+      const la = e.target.closest("[data-logadd]");
+      if (la) {
+        const x = logItems().find((y) => y.id === la.dataset.logadd), to = la.dataset.logto; if (!x) return;
+        dayOf(LOG).items = logItems().filter((y) => y !== x);
+        const d = x.d || 60; dayOf(to).items.push({ id: x.id, t: x.t, k: x.k, s: freeSlot(to, d), d });
+        touch(LOG, to); return render();
+      }
+      const le = e.target.closest("[data-logedit]");
+      if (le) { logEdit = le.dataset.logedit; render(); return document.getElementById("le-t")?.focus(); }
+      if (e.target.closest("[data-logcancel]")) { logEdit = null; return render(); }
       const st = e.target.closest("[data-strat]");
       if (st) { const id = st.dataset.strat; if (hidden.has(id)) hidden.delete(id); else if (hidden.size < STRATS.length - 1) hidden.add(id); return render(); }
       const mo = e.target.closest("[data-month]");
@@ -410,6 +448,18 @@
       dayOf(d).theme = e.target.value.trim() ? e.target.value : ""; touch(d);
     };
     app.onsubmit = (e) => {
+      if (e.target.id === "logadd") {
+        e.preventDefault();
+        const t = document.getElementById("l-t").value.trim(); if (!t) return;
+        logItems().unshift({ id: uid(), t, k: document.getElementById("l-k").value, s: 0, d: 60 }); touch(LOG); render();
+        return document.getElementById("l-t")?.focus();
+      }
+      if (e.target.id === "logedit") {
+        e.preventDefault();
+        const x = logItems().find((y) => y.id === logEdit), t = document.getElementById("le-t").value.trim();
+        if (x) { if (t) x.t = t; x.k = document.getElementById("le-k").value; touch(LOG); }
+        logEdit = null; return render();
+      }
       if (e.target.id === "edit") {
         e.preventDefault();
         const f = findItem(editing); if (!f) return;
@@ -483,6 +533,7 @@
       follow(move, up);
     };
 
+    if (!PLAN_API) rollover();
     render();
     connect();
   }
