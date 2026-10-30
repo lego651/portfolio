@@ -59,12 +59,41 @@ button, input, select { font: inherit; color: inherit; }
 .lift { box-shadow: 0 14px 30px rgba(0, 0, 0, .22); transform: scale(1.01); position: relative; z-index: 3; }
 
 /* today */
+.seg { display: inline-flex; background: var(--bg); border: 1px solid var(--ln); border-radius: 999px; padding: 2px; }
+.seg button { border: 0; background: transparent; border-radius: 999px; padding: 4px 12px; font-size: 13px; font-weight: 600; cursor: pointer; color: var(--mu); }
+.seg button[aria-selected="true"] { background: var(--ik); color: var(--pn); }
+.linkbtn { border: 0; background: none; color: var(--ac); font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; cursor: pointer; padding: 0 0 0 8px; }
 .theme { display: grid; gap: 2px; }
-.theme b { font-family: var(--hd); font-size: 26px; font-weight: 800; letter-spacing: -.03em; line-height: 1.05; color: var(--ac); text-wrap: balance; }
-.cal { position: relative; margin-left: 50px; }
+.theme-in { width: 100%; border: 0; border-bottom: 1px dashed var(--ln); background: transparent; padding: 2px 0 4px; font-family: var(--hd); font-size: 26px; font-weight: 800; letter-spacing: -.03em; color: var(--ac); }
+.theme-in::placeholder, .theme-sm::placeholder { color: var(--mu); opacity: .55; font-weight: 600; }
+.theme-in:focus, .theme-sm:focus { outline: none; border-bottom-color: var(--ac); }
+.calscroll { overflow-x: auto; margin: 0 -4px; padding: 8px 4px; }
+.cals { display: grid; gap: 0 6px; }
+.gut .colh { visibility: hidden; }
+.gl { position: relative; }
+.gl span { position: absolute; right: 6px; font-size: 11px; font-family: var(--nm); color: var(--mu); white-space: nowrap; }
+.col { min-width: 0; display: flex; flex-direction: column; }
+.colh { height: 62px; display: grid; align-content: start; gap: 4px; padding-bottom: 8px; }
+.cn { display: flex; justify-content: space-between; align-items: baseline; gap: 6px; font-size: 13px; }
+.cn span { font-family: var(--nm); font-size: 11px; color: var(--mu); }
+.theme-sm { width: 100%; min-width: 0; border: 0; border-bottom: 1px dashed var(--ln); background: transparent; padding: 1px 0 3px; font-family: var(--hd); font-weight: 800; font-size: 15px; letter-spacing: -.02em; color: var(--ac); }
+.cal { position: relative; }
 .cal .hr { position: absolute; left: 0; right: 0; border-top: 1px solid var(--ln); }
 .cal .hr.half { border-top-style: dotted; opacity: .6; }
-.cal .hr span { position: absolute; left: -50px; top: -8px; width: 44px; text-align: right; font-size: 11px; font-family: var(--nm); color: var(--mu); }
+.cals .col + .col .cal { border-left: 1px solid var(--ln); }
+.cal.istoday { background: color-mix(in srgb, var(--ac) 4%, transparent); }
+.mgrid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+.mgrid .dh { font-family: var(--nm); font-size: 10.5px; color: var(--mu); text-align: center; }
+.mc { border: 1px solid var(--ln); background: var(--pn); border-radius: 11px; min-height: 74px; padding: 5px 6px; display: flex; flex-direction: column; gap: 2px; text-align: left; cursor: pointer; min-width: 0; }
+.mc:hover { border-color: var(--ac); }
+.mc span { font-family: var(--nm); font-size: 11px; color: var(--mu); }
+.mc em { font-style: normal; font-family: var(--hd); font-weight: 700; font-size: 12.5px; line-height: 1.2; color: var(--ac); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow-wrap: anywhere; }
+.mc small { font-size: 10.5px; color: var(--mu); margin-top: auto; }
+.mc.past { opacity: .6; }
+.mc.today { border-color: var(--ac); box-shadow: inset 0 0 0 1px var(--ac); }
+.mc.today span { color: var(--ac); font-weight: 700; }
+.mc.blank { border: 0; background: transparent; cursor: default; }
+@media (max-width: 520px) { .mc { min-height: 58px; padding: 4px; } .mc em { font-size: 11px; } }
 .cal .ev { position: absolute; left: 6px; right: 4px; border-radius: 11px; padding: 4px 26px 4px 9px; cursor: grab; touch-action: none; overflow: hidden; font-size: 12.5px; line-height: 1.25; user-select: none; display: flex; flex-direction: column; gap: 1px;
   background: color-mix(in srgb, var(--c) 16%, var(--pn)); border: 1px solid color-mix(in srgb, var(--c) 48%, var(--pn)); }
 .cal .ev b { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -75,7 +104,7 @@ button, input, select { font: inherit; color: inherit; }
 .cal .ev.dragging { cursor: grabbing; z-index: 4; box-shadow: 0 10px 24px rgba(0, 0, 0, .25); }
 .cal .now { position: absolute; left: -6px; right: 0; border-top: 2px solid var(--ls); z-index: 2; pointer-events: none; }
 .cal .now::before { content: ""; position: absolute; left: -4px; top: -5px; width: 8px; height: 8px; border-radius: 50%; background: var(--ls); }
-.cal .empty { position: absolute; left: 6px; right: 6px; top: 40%; text-align: center; color: var(--mu); font-size: 13px; }
+.cal .empty { position: absolute; left: 6px; right: 6px; z-index: 1; top: 40%; text-align: center; color: var(--mu); font-size: 13px; }
 form.add { display: flex; gap: 6px; flex-wrap: wrap; }
 form.add input, form.add select { border-radius: 11px; padding: 6px 9px; font-size: 13px; min-width: 0; border: 1px solid var(--ln); background: var(--bg); }
 form.add input[type="text"] { flex: 1 1 150px; }

@@ -78,9 +78,17 @@
 
     const savedOrder = store.get("admin.order", []).filter((id) => byId[id]);
     let order = [...savedOrder, ...P.map((p) => p.id).filter((id) => !savedOrder.includes(id))];
-    const dayKey = "admin.day." + today;
-    let day = store.get(dayKey, []), nextId = day.reduce((a, x) => Math.max(a, x.id), 0) + 1;
-    const saveDay = () => store.set(dayKey, day);
+    // day plans: { days: { "YYYY-MM-DD": { theme, items: [{ id, s (minutes), d (minutes), t, k }] } } }, saved in this browser
+    const plan = store.get("admin.plan", { days: {} });
+    try { // one-time move of the older single-day lists
+      Object.keys(localStorage).filter((k) => k.startsWith("admin.day.")).forEach((k) => { (plan.days[k.slice(10)] ||= { theme: "", items: [] }).items.push(...store.get(k, [])); localStorage.removeItem(k); });
+    } catch {}
+    const dayOf = (d) => (plan.days[d] ||= { theme: "", items: [] });
+    const savePlan = () => { for (const [d, v] of Object.entries(plan.days)) if (!v.theme && !v.items.length) delete plan.days[d]; store.set("admin.plan", plan); };
+    let nextId = Object.values(plan.days).flatMap((v) => v.items).reduce((a, x) => Math.max(a, x.id), 0) + 1;
+    const addDays = (d, n) => { const x = parse(d); x.setDate(x.getDate() + n); return ymd(x); };
+    const dayName = (d) => (d === today ? "Today" : d === addDays(today, 1) ? "Tomorrow" : parse(d).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }));
+    let view = "day", focusDate = today, calMonth = today.slice(0, 7); // opens on Today every time
 
     const STRATS = (T.strategies || []).map((s, i) => ({ ...s, c: PCOL[(i + 2) % PCOL.length] }));
     const months = [...new Set(T.trades.map((t) => t.date.slice(0, 7)))].sort();
@@ -94,41 +102,75 @@
     // the goal to work on now: this week's if not done yet, else the next unfinished one
     const curWeek = (pl) => pl.weeks.find((w) => w.week === thisMon && !w.done) || pl.weeks.find((w) => !w.done && (!w.week || w.week >= thisMon)) || pl.weeks.find((w) => !w.done) || pl.weeks[0];
     const weekLabel = (w) => (!w.week ? "Next" : w.week === thisMon ? "This week" : short(w.week));
-    const top = () => byId[order[0]];
-    const suggestions = () => order.map((id) => ({ k: id, t: curWeek(planOf(byId[id]))?.goal })).filter((s) => s.t && !day.some((x) => x.t === s.t));
-    const freeSlot = (d) => Math.min(Math.max(day.reduce((a, x) => Math.max(a, x.s + x.d), 9 * 60), now.getHours() * 60 + (now.getMinutes() < 30 ? 30 : 60)), 21 * 60 - d);
+    const suggestions = (date) => order.map((id) => ({ k: id, t: curWeek(planOf(byId[id]))?.goal })).filter((s) => s.t && !dayOf(date).items.some((x) => x.t === s.t));
+    const freeSlot = (date, d) => {
+      const after = date === today ? now.getHours() * 60 + (now.getMinutes() < 30 ? 30 : 60) : 9 * 60;
+      return Math.min(Math.max(dayOf(date).items.reduce((a, x) => Math.max(a, x.s + x.d), 9 * 60), after), TO * 60 - d);
+    };
 
-    // ---------- today ----------
-    const FROM = 7, TO = 21, PPM = .6;
-    function calendar() {
+    // ---------- day plans: Today / 3 days / Month ----------
+    const FROM = 7, TO = 21, PPM = .6, H = (TO - FROM) * 60 * PPM;
+    function gutter(head) {
+      const labels = [];
+      for (let h = FROM; h <= TO; h++) labels.push(`<span style="top:${(h - FROM) * 60 * PPM - 8}px">${clock(h * 60).replace(":00", "")}</span>`);
+      return `<div class="gut">${head ? `<div class="colh"></div>` : ""}<div class="gl" style="height:${H}px">${labels.join("")}</div></div>`;
+    }
+    function column(date, head) {
       const lines = [];
       for (let h = FROM; h <= TO; h++) {
-        lines.push(`<div class="hr" style="top:${(h - FROM) * 60 * PPM}px"><span>${clock(h * 60).replace(":00", "")}</span></div>`);
+        lines.push(`<div class="hr" style="top:${(h - FROM) * 60 * PPM}px"></div>`);
         if (h < TO) lines.push(`<div class="hr half" style="top:${((h - FROM) * 60 + 30) * PPM}px"></div>`);
       }
-      const evs = day.map((x) => { const k = KIND[x.k] || KIND.personal; return `<div class="ev${x.d * PPM < 34 ? " short" : ""}" data-ev="${x.id}" style="--c:${k.c};top:${(x.s - FROM * 60) * PPM}px;height:${Math.max(x.d * PPM - 2, 18)}px">
+      const items = dayOf(date).items;
+      const evs = items.map((x) => { const k = KIND[x.k] || KIND.personal; return `<div class="ev${x.d * PPM < 44 ? " short" : ""}" data-ev="${x.id}" style="--c:${k.c};top:${(x.s - FROM * 60) * PPM}px;height:${Math.max(x.d * PPM - 2, 18)}px">
         <b>${esc(x.t)}</b><small>${clock(x.s)}–${clock(x.s + x.d)} · ${esc(k.n)}</small><button class="x" type="button" data-del="${x.id}" aria-label="Delete ${esc(x.t)}">×</button></div>`; }).join("");
       const n = now.getHours() * 60 + now.getMinutes();
-      const line = n >= FROM * 60 && n <= TO * 60 ? `<div class="now" style="top:${(n - FROM * 60) * PPM}px"></div>` : "";
-      const empty = day.length ? "" : `<div class="empty">Nothing planned yet. Add an item below or pick one from your projects.</div>`;
-      return `<div class="cal" style="height:${(TO - FROM) * 60 * PPM}px">${lines.join("")}${evs}${line}${empty}</div>`;
+      const line = date === today && n >= FROM * 60 && n <= TO * 60 ? `<div class="now" style="top:${(n - FROM * 60) * PPM}px"></div>` : "";
+      const empty = items.length || head ? "" : `<div class="empty">Nothing planned yet. Add an item below or pick one from your projects.</div>`;
+      return `<div class="col">${head ? `<div class="colh">${head}</div>` : ""}<div class="cal${date === today ? " istoday" : ""}" data-date="${date}" style="height:${H}px">${lines.join("")}${evs}${line}${empty}</div></div>`;
     }
-    function todayPanel() {
-      const t = top(), goal = t ? curWeek(planOf(t))?.goal : "";
-      const hrs = (day.reduce((a, x) => a + x.d, 0) / 60).toFixed(1);
-      return `<section class="panel s-today">
-        <div class="theme"><span class="eyebrow">Today's theme · your #1 project</span><b>${t ? esc(t.name) + (goal ? ": " + esc(goal.charAt(0).toLowerCase() + goal.slice(1)) : "") : "Pick a focus project"}</b></div>
-        <div class="ph"><h3>Today</h3><span class="fhint">${day.length} items · ${hrs} hrs · drag to move</span></div>
-        ${calendar()}
-        <form class="add" id="add">
-          <input type="text" id="n-t" placeholder="Add something to do" aria-label="New item">
-          <input type="time" id="n-s" value="${hhmm(freeSlot(60))}" step="900" aria-label="Start time">
-          <select id="n-d" aria-label="Length"><option value="30">30 min</option><option value="60" selected>1 hr</option><option value="90">1.5 hr</option><option value="120">2 hr</option></select>
-          <select id="n-k" aria-label="Project">${Object.entries(KIND).map(([k, v]) => `<option value="${k}"${k === "personal" ? " selected" : ""}>${esc(v.n)}</option>`).join("")}</select>
-          <button type="submit">Add</button></form>
-        <div class="chips"><span class="eyebrow">From your projects</span>${suggestions().map((s) => `<button class="chip" type="button" data-sugg="${s.k}" style="--c:${KIND[s.k].c}"><i></i>+ ${esc(s.t)}</button>`).join("") || `<span class="fhint">All added</span>`}</div>
-      </section>`;
+    const cals = (dates, heads) => `<div class="calscroll"><div class="cals" style="grid-template-columns:44px repeat(${dates.length}, minmax(${dates.length > 1 ? 150 : 0}px, 1fr))">${gutter(!!heads)}${dates.map((d, i) => column(d, heads && heads[i])).join("")}</div></div>`;
+    const themeInput = (date, cls, ph) => `<input class="${cls}" type="text" id="theme-${date}" data-theme-date="${date}" value="${esc(dayOf(date).theme)}" placeholder="${ph}" aria-label="Theme for ${dayName(date)}" maxlength="80">`;
+    const kindOptions = () => Object.entries(KIND).map(([k, v]) => `<option value="${k}"${k === "personal" ? " selected" : ""}>${esc(v.n)}</option>`).join("");
+    function addForm(dates) {
+      const first = dates[0];
+      return `<form class="add" id="add">
+        <input type="text" id="n-t" placeholder="Add something to do" aria-label="New item">
+        ${dates.length > 1 ? `<select id="n-date" aria-label="Day">${dates.map((d) => `<option value="${d}">${dayName(d)}</option>`).join("")}</select>` : `<input type="hidden" id="n-date" value="${first}">`}
+        <input type="time" id="n-s" value="${hhmm(freeSlot(first, 60))}" step="900" aria-label="Start time">
+        <select id="n-d" aria-label="Length"><option value="30">30 min</option><option value="60" selected>1 hr</option><option value="90">1.5 hr</option><option value="120">2 hr</option></select>
+        <select id="n-k" aria-label="Project">${kindOptions()}</select>
+        <button type="submit">Add</button></form>`;
     }
+    const chips = (date) => `<div class="chips"><span class="eyebrow">From your projects</span>${suggestions(date).map((s) => `<button class="chip" type="button" data-sugg="${s.k}" data-sugg-date="${date}" style="--c:${KIND[s.k].c}"><i></i>+ ${esc(s.t)}</button>`).join("") || `<span class="fhint">All added</span>`}</div>`;
+    const seg = () => `<div class="seg" role="tablist">${[["day", "Today"], ["three", "3 days"], ["month", "Month"]].map(([v, l]) => `<button type="button" role="tab" data-view="${v}" aria-selected="${view === v}">${l}</button>`).join("")}</div>`;
+    const hours = (date) => (dayOf(date).items.reduce((a, x) => a + x.d, 0) / 60).toFixed(1);
+
+    function dayView() {
+      const d = focusDate, it = dayOf(d).items.length;
+      const nav = `<span class="mnav"><button type="button" data-dnav="-1" aria-label="Previous day">‹</button>${esc(parse(d).toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" }))}<button type="button" data-dnav="1" aria-label="Next day">›</button></span>`;
+      return `<div class="ph"><div class="eyebrow">${nav}${d === today ? "" : ` <button type="button" class="linkbtn" data-view="day" data-go-today>Back to today</button>`}</div><span class="fhint">${it} items · ${hours(d)} hrs · drag to move</span></div>
+        <div class="theme"><span class="eyebrow">${d === today ? "Today's theme" : "Theme"}</span>${themeInput(d, "theme-in", "Set a theme for the day…")}</div>
+        ${cals([d])}${addForm([d])}${chips(d)}`;
+    }
+    function threeView() {
+      const ds = [today, addDays(today, 1), addDays(today, 2)];
+      const heads = ds.map((d) => `<div class="cn"><b>${dayName(d)}</b><span>${dayOf(d).items.length} · ${hours(d)}h</span></div>${themeInput(d, "theme-sm", "Theme…")}`);
+      return `<div class="ph"><span class="eyebrow">Today and the next 2 days</span><span class="fhint">Drag items between days</span></div>
+        ${cals(ds, heads)}${addForm(ds)}${chips(today)}`;
+    }
+    function monthView() {
+      const [y, m] = calMonth.split("-").map(Number), last = new Date(y, m, 0).getDate(), lead = (new Date(y, m - 1, 1).getDay() + 6) % 7;
+      const cells = Array(lead).fill(`<div class="mc blank"></div>`);
+      for (let n = 1; n <= last; n++) {
+        const d = `${calMonth}-${String(n).padStart(2, "0")}`, v = plan.days[d], it = v?.items.length || 0;
+        cells.push(`<button type="button" class="mc${d === today ? " today" : ""}${d < today ? " past" : ""}" data-open="${d}" aria-label="Open ${dayName(d)}"><span>${n}</span>${v?.theme ? `<em>${esc(v.theme)}</em>` : ""}${it ? `<small>${it} item${it > 1 ? "s" : ""}</small>` : ""}</button>`);
+      }
+      const label = parse(calMonth + "-15").toLocaleDateString("en-US", { month: "long", year: "numeric" });
+      return `<div class="ph"><span class="eyebrow"><span class="mnav"><button type="button" data-cmonth="-1" aria-label="Previous month">‹</button>${esc(label)}<button type="button" data-cmonth="1" aria-label="Next month">›</button></span></span><span class="fhint">Click a day to open it</span></div>
+        <div class="mgrid">${["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((x) => `<span class="dh">${x}</span>`).join("")}${cells.join("")}</div>`;
+    }
+    const todayPanel = () => `<section class="panel s-today"><div class="ph"><h3>Plan</h3>${seg()}</div>${view === "day" ? dayView() : view === "three" ? threeView() : monthView()}</section>`;
 
     // ---------- trading in R ----------
     function monthStats() {
@@ -237,12 +279,21 @@
         <div class="desk">${todayPanel()}${tradingPanel()}${projectsPanel()}</div>`;
     }
 
+    const findItem = (id) => { for (const [d, v] of Object.entries(plan.days)) { const x = v.items.find((y) => y.id === id); if (x) return { d, x }; } return null; };
     app.onclick = (e) => {
       if (e.target.closest("#lock")) { session.set(null); return gate(); }
+      const vw = e.target.closest("[data-view]");
+      if (vw) { view = vw.dataset.view; if (vw.hasAttribute("data-go-today") || view !== "day") focusDate = today; return render(); }
+      const op = e.target.closest("[data-open]");
+      if (op) { view = "day"; focusDate = op.dataset.open; return render(); }
+      const dn = e.target.closest("[data-dnav]");
+      if (dn) { focusDate = addDays(focusDate, +dn.dataset.dnav); return render(); }
+      const cm = e.target.closest("[data-cmonth]");
+      if (cm) { const [y, m] = calMonth.split("-").map(Number), d = new Date(y, m - 1 + +cm.dataset.cmonth, 1); calMonth = ymd(d).slice(0, 7); return render(); }
       const del = e.target.closest("[data-del]");
-      if (del) { day = day.filter((x) => x.id !== +del.dataset.del); saveDay(); return render(); }
+      if (del) { const f = findItem(+del.dataset.del); if (f) dayOf(f.d).items = dayOf(f.d).items.filter((y) => y !== f.x); savePlan(); return render(); }
       const sg = e.target.closest("[data-sugg]");
-      if (sg) { const t = curWeek(planOf(byId[sg.dataset.sugg])).goal; day.push({ id: nextId++, s: freeSlot(60), d: 60, t, k: sg.dataset.sugg }); saveDay(); return render(); }
+      if (sg) { const d = sg.dataset.suggDate, t = curWeek(planOf(byId[sg.dataset.sugg])).goal; dayOf(d).items.push({ id: nextId++, s: freeSlot(d, 60), d: 60, t, k: sg.dataset.sugg }); savePlan(); return render(); }
       const st = e.target.closest("[data-strat]");
       if (st) { const id = st.dataset.strat; if (hidden.has(id)) hidden.delete(id); else if (hidden.size < STRATS.length - 1) hidden.add(id); return render(); }
       const mo = e.target.closest("[data-month]");
@@ -250,27 +301,42 @@
       const dy = e.target.closest("[data-day]");
       if (dy) { sel = dy.dataset.day; render(); }
     };
+    // themes save as you type (no re-render, so the field keeps focus)
+    app.oninput = (e) => {
+      const d = e.target.dataset?.themeDate; if (!d) return;
+      dayOf(d).theme = e.target.value.trim() ? e.target.value : ""; savePlan();
+    };
     app.onsubmit = (e) => {
       if (e.target.id !== "add") return;
       e.preventDefault();
       const t = document.getElementById("n-t").value.trim(); if (!t) return;
-      const d = +document.getElementById("n-d").value, k = document.getElementById("n-k").value, v = document.getElementById("n-s").value;
-      const s = v ? Math.max(FROM * 60, Math.min(TO * 60 - d, (([h, m]) => h * 60 + m)(v.split(":").map(Number)))) : freeSlot(d);
-      day.push({ id: nextId++, s, d, t, k }); saveDay(); render();
+      const date = document.getElementById("n-date").value, d = +document.getElementById("n-d").value, k = document.getElementById("n-k").value, v = document.getElementById("n-s").value;
+      const s = v ? Math.max(FROM * 60, Math.min(TO * 60 - d, (([h, m]) => h * 60 + m)(v.split(":").map(Number)))) : freeSlot(date, d);
+      dayOf(date).items.push({ id: nextId++, s, d, t, k }); savePlan(); render();
     };
-    // drag: calendar blocks move in 15-minute steps; project cards reorder (top card = focus + today's theme)
+    // drag: calendar blocks move in 15-minute steps, and across days in the 3-day view; project cards reorder
     app.onpointerdown = (e) => {
       if (e.button > 0) return;
       const ev = e.target.closest(".cal .ev");
       if (ev && !e.target.closest("[data-del]")) {
-        const x = day.find((y) => y.id === +ev.dataset.ev), y0 = e.clientY, s0 = x.s;
+        const src = ev.parentNode, f = findItem(+ev.dataset.ev); if (!f) return;
+        const x = f.x, offY = e.clientY - ev.getBoundingClientRect().top, all = [...app.querySelectorAll(".cal[data-date]")];
+        let target = src;
         ev.setPointerCapture(e.pointerId); ev.classList.add("dragging");
         const move = (m) => {
-          x.s = Math.max(FROM * 60, Math.min(TO * 60 - x.d, Math.round((s0 + (m.clientY - y0) / PPM) / 15) * 15));
+          target = all.find((c) => { const r = c.getBoundingClientRect(); return m.clientX >= r.left && m.clientX < r.right; }) || target;
+          const tr = target.getBoundingClientRect(), sr = src.getBoundingClientRect();
+          x.s = Math.max(FROM * 60, Math.min(TO * 60 - x.d, Math.round((FROM * 60 + (m.clientY - offY - tr.top) / PPM) / 15) * 15));
           ev.style.top = (x.s - FROM * 60) * PPM + "px";
-          ev.querySelector("small").textContent = `${clock(x.s)}–${clock(x.s + x.d)} · ${(KIND[x.k] || KIND.personal).n}`;
+          ev.style.transform = `translateX(${tr.left - sr.left}px)`;
+          ev.querySelector("small").textContent = `${target === src ? "" : dayName(target.dataset.date) + " · "}${clock(x.s)}–${clock(x.s + x.d)}`;
         };
-        const up = () => { ev.removeEventListener("pointermove", move); saveDay(); render(); };
+        const up = () => {
+          ev.removeEventListener("pointermove", move);
+          const to = target.dataset.date;
+          if (to !== f.d) { dayOf(f.d).items = dayOf(f.d).items.filter((y) => y !== x); dayOf(to).items.push(x); }
+          savePlan(); render();
+        };
         ev.addEventListener("pointermove", move);
         ev.addEventListener("pointerup", up, { once: true }); ev.addEventListener("pointercancel", up, { once: true });
         return;

@@ -4,7 +4,7 @@ A private page for Jason at https://lego651.github.io/portfolio/admin/. It isn't
 
 | Part | Where | Data comes from |
 |---|---|---|
-| **Today** (top left) | Hour grid, 7am–9pm. Drag blocks to move them; add, delete, or pick from the projects' current-week goals. Today's theme is the #1 project's current-week goal. | Saved in the browser (`localStorage`, one list per date). Not synced between devices. |
+| **Plan** (top left) | Three views; opens on **Today** every time. **Today**: one day's hour grid (7am–9pm) with ‹ › to step days. **3 days**: today plus the next 2 side by side; drag items between days. **Month**: each day's theme; click a day to open it. Every day has its own theme you type in (empty by default). Drag blocks to move them; add, delete, or pick from the projects' current-week goals. | Saved in the browser (`localStorage` key `admin.plan`). Not synced between devices. |
 | **Trading** (bottom left) | Month of results **in R**: strategy switches, cumulative R line, heatmap with one dot per trade, win rate, R per trade, green days, best/worst day, and the trades of the day you click. | `admin/data/trades.enc.json` if it exists, otherwise `admin/data/trades.mock.json` (fake data, with a "sample data" badge). |
 | **Projects** (right) | Focus stack. The top card shows the full 4-week plan; drag ⋮⋮ to reorder. | `site.json` + `projects/<id>/project.json` → `plan` (written by `/update-portfolio`). Card order is saved in the browser. |
 
