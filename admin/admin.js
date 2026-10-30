@@ -421,7 +421,7 @@
         const src = ev.parentNode, f = findItem(ev.dataset.ev); if (!f) return;
         const x = f.x, s0 = x.s, x0 = e.clientX, y0 = e.clientY, offY = e.clientY - ev.getBoundingClientRect().top, all = [...app.querySelectorAll(".cal[data-date]")];
         let target = src, moved = false;
-        ev.setPointerCapture(e.pointerId); ev.classList.add("dragging");
+        try { ev.setPointerCapture(e.pointerId); } catch {} ev.classList.add("dragging");
         const move = (m) => {
           if (!moved && Math.abs(m.clientX - x0) < 4 && Math.abs(m.clientY - y0) < 4) return;
           moved = true;
@@ -445,13 +445,15 @@
       }
       const grip = e.target.closest("[data-grip]"); if (!grip) return;
       const item = grip.closest("[data-id]"), list = item.parentNode;
-      e.preventDefault(); grip.setPointerCapture(e.pointerId); item.classList.add("lift");
+      e.preventDefault(); try { grip.setPointerCapture(e.pointerId); } catch {} item.classList.add("lift");
       const move = (m) => {
         const over = document.elementFromPoint(m.clientX, m.clientY)?.closest("[data-id]");
         if (!over || over === item || over.parentNode !== list) return;
         const kids = [...list.children], r = over.getBoundingClientRect(), down = kids.indexOf(over) > kids.indexOf(item);
-        if (down && m.clientY > r.top + r.height / 2) list.insertBefore(item, over.nextSibling);
-        else if (!down && m.clientY < r.top + r.height / 2) list.insertBefore(item, over);
+        // swap once the pointer is ~60px into the card being passed, so the tall focus card is easy to pass too
+        const edge = Math.min(r.height / 2, 60);
+        if (down && m.clientY > r.bottom - edge) list.insertBefore(item, over.nextSibling);
+        else if (!down && m.clientY < r.bottom - edge) list.insertBefore(item, over);
       };
       const up = () => {
         grip.removeEventListener("pointermove", move); item.classList.remove("lift");
