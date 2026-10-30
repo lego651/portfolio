@@ -10,6 +10,8 @@ A private page for Jason at https://lego651.github.io/portfolio/admin/. It isn't
 
 Files: `admin/index.html`, `admin/admin.css`, `admin/admin.js`, `admin/data/`, `admin/tools/encrypt-trades.mjs`.
 
+**After changing `admin.js` or `admin.css`, bump the `?v=` on their links in `admin/index.html`** (use the short commit hash). GitHub Pages lets browsers cache files for 10 minutes, so without a new `?v=` a refresh can keep showing the old version.
+
 ## The password
 
 - The page asks for a password before showing anything. The repo stores only its SHA-256 hash (`PASS_SHA256` in `admin/admin.js`), **never the password itself**. Don't write the password into any file, commit message or doc.
