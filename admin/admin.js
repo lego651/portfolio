@@ -414,6 +414,10 @@
     };
     // drag: calendar blocks move in 15-minute steps, and across days in the 3-day view; a click without moving opens the editor.
     // Project cards reorder.
+    const follow = (move, up) => {
+      const end = (ev) => { window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", end); window.removeEventListener("pointercancel", end); up(ev); };
+      window.addEventListener("pointermove", move); window.addEventListener("pointerup", end); window.addEventListener("pointercancel", end);
+    };
     app.onpointerdown = (e) => {
       if (e.button > 0) return;
       const ev = e.target.closest(".cal .ev");
@@ -421,7 +425,7 @@
         const src = ev.parentNode, f = findItem(ev.dataset.ev); if (!f) return;
         const x = f.x, s0 = x.s, x0 = e.clientX, y0 = e.clientY, offY = e.clientY - ev.getBoundingClientRect().top, all = [...app.querySelectorAll(".cal[data-date]")];
         let target = src, moved = false;
-        try { ev.setPointerCapture(e.pointerId); } catch {} ev.classList.add("dragging");
+        e.preventDefault(); ev.classList.add("dragging");
         const move = (m) => {
           if (!moved && Math.abs(m.clientX - x0) < 4 && Math.abs(m.clientY - y0) < 4) return;
           moved = true;
@@ -433,19 +437,17 @@
           ev.querySelector("small").textContent = `${target === src ? "" : dayName(target.dataset.date) + " · "}${clock(x.s)}–${clock(x.s + x.d)}`;
         };
         const up = () => {
-          ev.removeEventListener("pointermove", move);
           if (!moved) { x.s = s0; editing = editing === x.id ? null : x.id; return render(); }
           const to = target.dataset.date;
           if (to !== f.d) { dayOf(f.d).items = dayOf(f.d).items.filter((y) => y !== x); dayOf(to).items.push(x); }
           touch(f.d, to); render();
         };
-        ev.addEventListener("pointermove", move);
-        ev.addEventListener("pointerup", up, { once: true }); ev.addEventListener("pointercancel", up, { once: true });
+        follow(move, up);
         return;
       }
       const grip = e.target.closest("[data-grip]"); if (!grip) return;
       const item = grip.closest("[data-id]"), list = item.parentNode;
-      e.preventDefault(); try { grip.setPointerCapture(e.pointerId); } catch {} item.classList.add("lift");
+      e.preventDefault(); item.classList.add("lift");
       const move = (m) => {
         const over = document.elementFromPoint(m.clientX, m.clientY)?.closest("[data-id]");
         if (!over || over === item || over.parentNode !== list) return;
@@ -456,11 +458,10 @@
         else if (!down && m.clientY < r.bottom - edge) list.insertBefore(item, over);
       };
       const up = () => {
-        grip.removeEventListener("pointermove", move); item.classList.remove("lift");
+        item.classList.remove("lift");
         order = [...list.children].map((c) => c.dataset.id); store.set("admin.order", order); render();
       };
-      grip.addEventListener("pointermove", move);
-      grip.addEventListener("pointerup", up, { once: true }); grip.addEventListener("pointercancel", up, { once: true });
+      follow(move, up);
     };
 
     render();
